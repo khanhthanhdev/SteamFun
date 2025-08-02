@@ -1,0 +1,111 @@
+# Scene 1 Implementation Plan
+
+<SCENE_VISION_STORYBOARD_PLAN>
+[SCENE_VISION]
+1.  **Scene Overview**:
+    - This scene introduces the derivative as a fundamental concept in calculus, emphasizing its significance in determining the slope of a function at a specific point. The key takeaway is to understand that the derivative represents the rate of change of a function, visually interpreted as the slope of a tangent line at a given point on a graph.
+    - **Visual learning objectives for viewers:** Use an `Axes` object to depict the graph of a linear function, `Line` objects to illustrate slopes, and `MathTex` for the derivative notation. Visualize the slope as a right triangle using three `Polygon` objects to clearly show the rise over run concept.
+    - The Manim visuals support learning by providing a clear graphical representation of the slope and derivative concepts. The `Axes` will be positioned on the left, while the title will be on the right, ensuring proper spacing and clarity. Use `VGroup` to group related elements like the slope triangle for easier animation and spatial control, while maintaining a minimum spacing of 0.3 units between all objects.
+
+[STORYBOARD]
+1.  **Visual Flow & Pacing (Manim Animation Sequence)**:
+    - **Sub-scene 1: Introduction of Axes and Graph**
+        - **Visual Element**: `Axes` object representing the coordinate system.
+        - **Animation Sequence**: 
+            - Create the `Axes` object with `Create(axes, run_time=2)`.
+            - Plot a linear function (e.g., \( y = 2x + 1 \)) using `Plot`, with a `Color` of BLUE and a `stroke_width=2`. Position it to the right of the axes, ensuring a minimum of 0.3 units spacing.
+            - Use `Create(line_graph, run_time=2)` to animate the graph's appearance.
+            - Wait for 1 second (`Wait(1)`).
+        
+    - **Sub-scene 2: Title Introduction**
+        - **Visual Element**: Title text "What is a Derivative?" using `Tex`.
+        - **Animation Sequence**: 
+            - Create the title positioned on the right side of the scene, ensuring it is at least 0.3 units away from the axes. Use `title.next_to(axes, RIGHT, buff=0.3)`.
+            - Animate the title's entrance using `Write(title, run_time=2)`.
+            - Wait for 1 second (`Wait(1)`).
+
+    - **Sub-scene 3: Slope Visualization**
+        - **Visual Element**: Use `Polygon` to create a right triangle representing the slope (rise/run).
+        - **Animation Sequence**:
+            - Position the triangle relative to the graph, ensuring it is at least 0.3 units from the graph and the title. Use `triangle.move_to(...)` with appropriate offsets.
+            - Create the triangle using `Create(triangle, run_time=2)`.
+            - Use arrows (`Arrow` class) to highlight the rise and run components, ensuring they maintain a 0.3 unit spacing from the triangle.
+            - Animate the arrows with `Create(arrow_rise, run_time=1)` and `Create(arrow_run, run_time=1)`.
+            - Wait for 1 second (`Wait(1)`).
+
+    - **Sub-scene 4: Derivative Notation**
+        - **Visual Element**: `MathTex` to display the notation for the derivative, e.g., \( f'(x) \).
+        - **Animation Sequence**: 
+            - Position the derivative notation below the slope visualization, ensuring 0.3 unit spacing from the triangle and other elements.
+            - Use `Write(derivative_notation, run_time=2)`.
+            - Conclude with a brief pause (`Wait(1)`), allowing viewers to absorb the content.
+
+</SCENE_VISION_STORYBOARD_PLAN>
+
+<SCENE_TECHNICAL_IMPLEMENTATION_PLAN>
+0. **Dependencies**:
+    - **Manim API Version**: Latest stable release, using core elements from the official Manim library.
+    - **Allowed Imports**: `from manim import *`, and any explicitly approved plugins if necessary. No external assets are allowed.
+    
+1. **Manim Object Selection & Configuration (Text and Shapes)**:
+    - **Axes**: `axes = Axes(x_range=[-3, 3, 1], y_range=[-1, 7, 1], axis_config={"color": BLUE})`
+    - **Linear Function Graph**: `line_graph = axes.plot(lambda x: 2*x + 1, color=BLUE, stroke_width=2)`
+    - **Title**: `title = Tex("What is a Derivative?", font_size=28)`, ensuring it fits within the defined dimensions.
+    - **Slope Triangle**: `triangle = Polygon(ORIGIN, RIGHT + UP, RIGHT, color=YELLOW, fill_opacity=0.5)`
+    - **Rise Arrow**: `arrow_rise = Arrow(start=triangle.get_vertices()[0], end=triangle.get_vertices()[1], color=RED)`
+    - **Run Arrow**: `arrow_run = Arrow(start=triangle.get_vertices()[1], end=triangle.get_vertices()[2], color=GREEN)`
+    - **Derivative Notation**: `derivative_notation = MathTex("f'(x)", font_size=24)`
+    
+    - **Text Considerations**:
+        - The title uses `Tex` for proper formatting and sizing.
+        - The derivative notation uses `MathTex` as it represents a mathematical expression.
+    
+    - **Positioning**: Ensure all objects begin within the safe area (0.5 units from all edges) and maintain at least 0.3 units spacing to avoid overlaps.
+
+2. **VGroup Structure & Hierarchy**:
+    - **Graph Group**: `graph_group = VGroup(axes, line_graph)`
+    - **Slope Group**: `slope_group = VGroup(triangle, arrow_rise, arrow_run)`
+    - **Title Group**: `title_group = VGroup(title, derivative_notation)`
+    
+    - Each group is used to organize related visual elements for efficient management and animation.
+
+3. **Spatial Positioning Strategy**:
+    - **Axes and Graph**: Position `axes` at the left side of the screen with `axes.shift(LEFT * 2)`. Ensure it respects the safe area.
+    - **Graph**: Position `line_graph` using `line_graph.next_to(axes, RIGHT, buff=0.3)`.
+    - **Title**: `title.next_to(axes, RIGHT, buff=0.3)` to keep the title at a safe distance from the axes.
+    - **Triangle**: Position the triangle using `triangle.move_to(line_graph.points[5] + UP*0.3)` ensuring it does not overlap with other elements.
+    - **Arrows**: Position arrows appropriately such that they extend from the triangle, using the `get_vertices()` method to ensure proper placement.
+    - **Derivative Notation**: Position below the slope visualization using `derivative_notation.next_to(slope_group, DOWN, buff=0.3)`.
+
+    - **Bounding Box Safety**: Use the `get_bounding_box()` method to ensure no text overflows the defined area.
+
+4. **Animation Methods & Object Lifecycle Management**:
+    - Animation Sequence:
+        - **Create Axes and Graph**: `self.play(Create(graph_group, run_time=2))`
+        - **Wait**: `self.wait(1)`
+        - **Animate Title**: `self.play(Write(title, run_time=2))`
+        - **Wait**: `self.wait(1)`
+        - **Create Slope Visualization**: `self.play(Create(slope_group, run_time=2))`
+        - **Create Arrows**: `self.play(Create(arrow_rise, run_time=1), Create(arrow_run, run_time=1))`
+        - **Wait**: `self.wait(1)`
+        - **Display Derivative Notation**: `self.play(Write(derivative_notation, run_time=2))`
+        - **Final Wait**: `self.wait(1)`
+    
+5. **Code Structure & Reusability**:
+    - Modular functions can be implemented for creating axes, graphs, and annotations.
+    - Code organization:
+        - Dependency imports
+        - Object definitions
+        - Layout methods for positioning
+        - Animation sequences in the `construct` method
+    - Inline comments to document the rationale for choices made in terms of positioning and object creation.
+
+***Mandatory Safety Checks***:
+    - **Safe Area Enforcement**: All objects, including text bounding boxes, must remain within 0.5 unit margins.
+    - **Minimum Spacing Validation**: Confirm a minimum of 0.3 units spacing between every pair of objects.
+    - **Transition Buffers**: Explicit `Wait()` calls are used to separate animation steps and sub-scenes.
+
+</SCENE_TECHNICAL_IMPLEMENTATION_PLAN>
+
+litellm.Timeout: APITimeoutError - Request timed out. Error_str: Request timed out.
+

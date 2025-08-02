@@ -1,0 +1,272 @@
+{
+  "agents": {
+    "planner_agent": {
+      "name": "planner_agent",
+      "model_config": {
+        "temperature": 0.7,
+        "max_tokens": 4000,
+        "timeout": 300
+      },
+      "tools": [
+        "scene_planning",
+        "plugin_detection"
+      ],
+      "max_retries": 3,
+      "timeout_seconds": 300,
+      "enable_human_loop": false,
+      "planner_model": "openai/gpt-4o",
+      "scene_model": null,
+      "helper_model": "openai/gpt-4o-mini",
+      "temperature": 0.7,
+      "print_cost": true,
+      "verbose": false
+    },
+    "code_generator_agent": {
+      "name": "code_generator_agent",
+      "model_config": {
+        "temperature": 0.7,
+        "max_tokens": 4000,
+        "timeout": 300
+      },
+      "tools": [
+        "code_generation",
+        "error_fixing",
+        "rag_query"
+      ],
+      "max_retries": 5,
+      "timeout_seconds": 600,
+      "enable_human_loop": true,
+      "planner_model": null,
+      "scene_model": "openai/gpt-4o",
+      "helper_model": "openai/gpt-4o-mini",
+      "temperature": 0.7,
+      "print_cost": true,
+      "verbose": false
+    },
+    "renderer_agent": {
+      "name": "renderer_agent",
+      "model_config": {
+        "temperature": 0.3,
+        "max_tokens": 2000,
+        "timeout": 600
+      },
+      "tools": [
+        "video_rendering",
+        "optimization"
+      ],
+      "max_retries": 3,
+      "timeout_seconds": 1200,
+      "enable_human_loop": false,
+      "planner_model": null,
+      "scene_model": null,
+      "helper_model": "openai/gpt-4o-mini",
+      "temperature": 0.3,
+      "print_cost": true,
+      "verbose": false
+    },
+    "visual_analysis_agent": {
+      "name": "visual_analysis_agent",
+      "model_config": {
+        "temperature": 0.5,
+        "max_tokens": 3000,
+        "timeout": 300
+      },
+      "tools": [
+        "visual_analysis",
+        "error_detection"
+      ],
+      "max_retries": 3,
+      "timeout_seconds": 300,
+      "enable_human_loop": true,
+      "planner_model": null,
+      "scene_model": null,
+      "helper_model": "openai/gpt-4o-mini",
+      "temperature": 0.5,
+      "print_cost": true,
+      "verbose": false
+    },
+    "rag_agent": {
+      "name": "rag_agent",
+      "model_config": {
+        "temperature": 0.3,
+        "max_tokens": 2000,
+        "timeout": 180
+      },
+      "tools": [
+        "rag_query",
+        "context_retrieval",
+        "document_processing"
+      ],
+      "max_retries": 2,
+      "timeout_seconds": 180,
+      "enable_human_loop": false,
+      "planner_model": null,
+      "scene_model": null,
+      "helper_model": "openai/gpt-4o-mini",
+      "temperature": 0.3,
+      "print_cost": true,
+      "verbose": false
+    },
+    "error_handler_agent": {
+      "name": "error_handler_agent",
+      "model_config": {
+        "temperature": 0.3,
+        "max_tokens": 2000,
+        "timeout": 120
+      },
+      "tools": [
+        "error_classification",
+        "recovery_routing"
+      ],
+      "max_retries": 1,
+      "timeout_seconds": 120,
+      "enable_human_loop": true,
+      "planner_model": null,
+      "scene_model": null,
+      "helper_model": "openai/gpt-4o-mini",
+      "temperature": 0.3,
+      "print_cost": true,
+      "verbose": false
+    },
+    "monitoring_agent": {
+      "name": "monitoring_agent",
+      "model_config": {
+        "temperature": 0.1,
+        "max_tokens": 1000,
+        "timeout": 60
+      },
+      "tools": [
+        "performance_monitoring",
+        "diagnostics"
+      ],
+      "max_retries": 1,
+      "timeout_seconds": 60,
+      "enable_human_loop": false,
+      "planner_model": null,
+      "scene_model": null,
+      "helper_model": "openai/gpt-4o-mini",
+      "temperature": 0.1,
+      "print_cost": false,
+      "verbose": false
+    },
+    "human_loop_agent": {
+      "name": "human_loop_agent",
+      "model_config": {
+        "temperature": 0.5,
+        "max_tokens": 1500,
+        "timeout": 30
+      },
+      "tools": [
+        "human_interaction",
+        "decision_presentation"
+      ],
+      "max_retries": 1,
+      "timeout_seconds": 30,
+      "enable_human_loop": true,
+      "planner_model": null,
+      "scene_model": null,
+      "helper_model": "openai/gpt-4o-mini",
+      "temperature": 0.5,
+      "print_cost": false,
+      "verbose": true
+    }
+  },
+  "llm_providers": {
+    "openai": {
+      "api_key_env": "OPENAI_API_KEY",
+      "base_url": null,
+      "models": [
+        "openai/gpt-4o",
+        "openai/gpt-4o-mini",
+        "openai/gpt-4",
+        "openai/gpt-3.5-turbo"
+      ],
+      "default_model": "openai/gpt-4o"
+    },
+    "aws_bedrock": {
+      "region": "us-east-1",
+      "models": [
+        "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "bedrock/anthropic.claude-3-haiku-20240307-v1:0",
+        "bedrock/amazon.titan-text-premier-v1:0",
+        "bedrock/amazon.nova-pro-v1:0"
+      ],
+      "default_model": "bedrock/amazon.nova-pro-v1:0"
+    },
+    "openrouter": {
+      "api_key_env": "OPENROUTER_API_KEY",
+      "base_url": "https://openrouter.ai/api/v1",
+      "models": [
+        "openrouter/openai/gpt-4o",
+        "openrouter/openai/gpt-4o-mini",
+        "openrouter/anthropic/claude-3.5-sonnet",
+        "openrouter/anthropic/claude-3-haiku"
+      ],
+      "default_model": "openrouter/openai/gpt-4o"
+    }
+  },
+  "docling_config": {
+    "enabled": true,
+    "max_file_size_mb": 50,
+    "supported_formats": [
+      "pdf",
+      "docx",
+      "txt",
+      "md"
+    ],
+    "timeout_seconds": 120
+  },
+  "mcp_servers": {
+    "context7": {
+      "command": "uvx",
+      "args": [
+        "context7-mcp-server@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "resolve_library_id",
+        "get_library_docs"
+      ]
+    },
+    "docling": {
+      "command": "uvx",
+      "args": [
+        "docling-mcp-server@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "process_document"
+      ]
+    }
+  },
+  "monitoring_config": {
+    "enabled": true,
+    "langfuse_enabled": true,
+    "performance_tracking": true,
+    "error_tracking": true,
+    "execution_tracing": true,
+    "langfuse_config": {
+      "enabled": true,
+      "secret_key_env": "LANGFUSE_SECRET_KEY",
+      "public_key_env": "LANGFUSE_PUBLIC_KEY",
+      "host": "https://cloud.langfuse.com",
+      "debug": false
+    }
+  },
+  "human_loop_config": {
+    "enabled": true,
+    "enable_interrupts": true,
+    "timeout_seconds": 300,
+    "auto_approve_low_risk": false
+  },
+  "max_workflow_retries": 3,
+  "workflow_timeout_seconds": 3600,
+  "enable_checkpoints": true,
+  "checkpoint_interval": 300
+}

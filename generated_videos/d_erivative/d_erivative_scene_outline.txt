@@ -1,0 +1,50 @@
+<SCENE_OUTLINE>
+    <SCENE_1>
+    Scene Title: Introduction to Derivative
+    Scene Purpose: Introduce the concept of derivatives and their significance in calculus. Set the stage for understanding slope and rate of change.
+    Scene Description: This scene introduces the derivative as a fundamental concept in calculus, explaining its role in determining the slope of a function at a given point. Visual examples of linear functions will be displayed to illustrate basic slopes.
+    Scene Layout: The left side features a simple linear function graph with axes labeled. On the right side, a title stating "What is a Derivative?" in bold, large font. Ensure a safe area of 0.5 units on all sides and maintain a minimum spacing of 0.3 units between the graph and text.
+    </SCENE_1>
+
+    <SCENE_2>
+    Scene Title: Function and Slope
+    Scene Purpose: Explain the concept of a function and how slope relates to derivatives. Build on the understanding of a basic function from Scene 1.
+    Scene Description: This scene details how to calculate the slope of a function using two points. A visual representation of two points on the graph will be shown with a line connecting them, highlighting the rise over run concept.
+    Scene Layout: The function graph remains in the background, while two points are marked clearly with red dots. The connecting line is drawn prominently, and the rise/run values are annotated. Maintain a safe area of 0.5 units and a minimum spacing of 0.3 units between the graph, points, and annotations.
+    </SCENE_2>
+
+    <SCENE_3>
+    Scene Title: Instantaneous Rate of Change
+    Scene Purpose: Introduce the concept of instantaneous rate of change and its relation to derivatives. Transition from average slope to instantaneous slope.
+    Scene Description: This scene contrasts average slope (from Scene 2) with instantaneous slope. A tangent line is drawn at a point on the function, demonstrating how it represents the derivative at that specific point.
+    Scene Layout: The function graph is the background, with the tangent line drawn at a specific point. Annotations explain the concept of the tangent line as the instantaneous slope. Ensure safe area margins and keep a minimum spacing of 0.3 units between the graph and text elements.
+    </SCENE_3>
+
+    <SCENE_4>
+    Scene Title: Derivative Notation
+    Scene Purpose: Familiarize viewers with different notations used for derivatives. Build on the concepts from previous scenes to connect notation with graphical representations.
+    Scene Description: This scene presents various notations for derivatives, such as f'(x), dy/dx, and Df, explaining the context of each. Corresponding visual examples will be displayed alongside each notation.
+    Scene Layout: The left side displays the derivative notations with corresponding definitions, while the right side shows graphs illustrating each notation. Maintain a safe area margin and a minimum spacing of 0.3 units between notation text and graph illustrations.
+    </SCENE_4>
+
+    <SCENE_5>
+    Scene Title: Basic Derivative Rules
+    Scene Purpose: Introduce basic rules for calculating derivatives. Building on the notation from Scene 4, this scene aims to provide practical skills.
+    Scene Description: This scene outlines basic derivative rules, such as the power rule and sum rule. Examples will be worked out visually step-by-step, with clear annotations for each step.
+    Scene Layout: The left half shows the derivative rules listed clearly, while the right half demonstrates the calculations with clear, step-by-step annotations. Maintain safe area margins and ensure at least 0.3 units of spacing between text and calculations.
+    </SCENE_5>
+
+    <SCENE_6>
+    Scene Title: Application of Derivatives
+    Scene Purpose: Demonstrate real-world applications of derivatives, connecting theory to practice. Build on the understanding from Scene 5.
+    Scene Description: This scene provides practical examples of how derivatives are used in various fields, such as physics (to determine speed) and economics (to find profit maximization). Visual examples will illustrate these applications.
+    Scene Layout: Split-screen format: one side shows a real-world scenario (e.g., a car speeding) while the other side displays the relevant function and its derivative. Maintain safe area margins and ensure at least 0.3 units of spacing between the visuals.
+    </SCENE_6>
+
+    <SCENE_7>
+    Scene Title: Recap and Conclusion
+    Scene Purpose: Summarize key points about derivatives and their significance. Reinforce learning from previous scenes.
+    Scene Description: This final scene recaps the key concepts discussed throughout the video, emphasizing the importance of derivatives in understanding change and motion. A call to action is suggested for further exploration of calculus.
+    Scene Layout: The center features a summary list of key points, while the background displays a simple animated graph illustrating a function and its derivative. Ensure a safe area margin and maintain at least 0.3 units of spacing between the text and animated elements.
+    </SCENE_7>
+</SCENE_OUTLINE>

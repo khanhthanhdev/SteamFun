@@ -1,0 +1,74 @@
+<SCENE_TECHNICAL_IMPLEMENTATION_PLAN>
+0. **Dependencies**:
+    - **Manim API Version**: Target the latest stable Manim release, using only documented API elements.
+    - **Allowed Imports**: `from manim import *` for core Manim functionalities.
+
+1. **Manim Object Selection & Configuration (Text and Shapes)**:
+    - **Axes**: 
+        - Used to represent the function graph.
+        - Parameters: `x_range=(-3, 3, 1), y_range=(-1, 9, 1), axis_config={"color": BLUE}`.
+    - **Function Graph**: 
+        - Created using `Plot` object for \( f(x) = x^2 \).
+        - Code: `function = self.plot(lambda x: x**2, color=BLUE)`.
+    - **Dot**: 
+        - Represents the point of tangency at \( (1, 1) \).
+        - Parameters: `Dot(color=YELLOW).move_to(ORIGIN + RIGHT + UP)`.
+    - **Tangent Line**:
+        - A line representing the tangent at the point of tangency.
+        - Code: `tangent_line = Line(start=LEFT + UP, end=RIGHT + UP, color=YELLOW)`.
+    - **Mathematical Expression for Derivative**:
+        - `MathTex` for the derivative notation \( f'(x) \).
+        - Code: `derivative_tex = MathTex("f'(x)", font_size=24)`.
+    - **Explanatory Text**:
+        - `Tex` for "Instantaneous Rate of Change".
+        - Code: `explanation_tex = Tex("Instantaneous Rate of Change", font_size=24)`.
+
+2. **VGroup Structure & Hierarchy**:
+    - **VGroup for Tangent Elements**:
+        - Group the tangent line and the dot for easier manipulation.
+        - Code: `tangent_group = VGroup(tangent_line, dot)`.
+    - **VGroup for Mathematical Expressions**:
+        - Group for the derivative and explanation text.
+        - Code: `formula_group = VGroup(derivative_tex, explanation_tex)`.
+
+3. **Spatial Positioning Strategy**:
+    - **Axes**: 
+        - Position at the center of the scene while ensuring a safe margin: `self.add(axes)`.
+    - **Function Graph**:
+        - Plotted on the axes: `self.add(function)`.
+    - **Dot**:
+        - Positioned relative to the graph: `dot.move_to(1 * RIGHT + 1 * UP)`.
+    - **Tangent Line**:
+        - Positioned above the point of tangency: `tangent_line.move_to(dot.get_center() + 0.5 * UP)`.
+    - **Derivative Notation**:
+        - Positioned above the tangent line: `derivative_tex.next_to(tangent_line, UP, buff=0.3)`.
+    - **Explanatory Text**:
+        - Positioned below the derivative notation: `explanation_tex.next_to(derivative_tex, DOWN, buff=0.3)`.
+
+4. **Animation Methods & Object Lifecycle Management**:
+    - **Scene Start**: 
+        - `self.play(Create(axes), run_time=2)`.
+        - `self.play(Create(function), Wait(1))`.
+    - **Sub-scene 1**: 
+        - Introduce the dot: `self.play(Create(dot), Wait(1))`.
+    - **Sub-scene 2**: 
+        - Introduce the tangent line: `self.play(Create(tangent_line), run_time=1.5)`.
+    - **Sub-scene 3**: 
+        - Introduce the derivative notation: `self.play(Write(derivative_tex), run_time=1)`.
+    - **Sub-scene 4**: 
+        - Introduce explanatory text: `self.play(Write(explanation_tex), run_time=1)`.
+    - **End Scene**: 
+        - `self.wait(2)` to allow viewers to digest the information.
+
+5. **Code Structure & Reusability**:
+    - Organize code into logical sections:
+        - Dependencies
+        - Object definitions
+        - Layout and animations
+    - Use comments to document code choices referencing Manim documentation.
+
+***Mandatory Safety Checks***:
+    - **Safe Area Enforcement**: All objects, including text bounding boxes, must remain within 0.5 unit margins.
+    - **Minimum Spacing Validation**: Confirm a minimum of 0.3 units spacing between every pair of objects.
+    - **Transition Buffers**: Use explicit `Wait()` calls to separate animation steps and sub-scenes.
+</SCENE_TECHNICAL_IMPLEMENTATION_PLAN>

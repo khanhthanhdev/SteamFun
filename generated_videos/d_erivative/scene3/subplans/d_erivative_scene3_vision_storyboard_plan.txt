@@ -1,0 +1,42 @@
+<SCENE_VISION_STORYBOARD_PLAN>
+[SCENE_VISION]
+1.  **Scene Overview**:
+    - This scene introduces the concept of instantaneous rate of change, a fundamental idea behind derivatives, and contrasts it with the average slope discussed in Scene 2. The key takeaway is to visualize how the derivative at a specific point on a function is represented by the slope of the tangent line. This sets the stage for understanding derivatives in a more profound way.
+    - **Visual learning objectives for viewers:** Use `Axes` to represent the function graph, `Line` for the tangent line, and `Dot` for the point of tangency. `MathTex` will be used for mathematical expressions related to derivatives and slopes.
+    - Manim visuals & animations support learning by clearly illustrating the relationship between the function, the tangent line, and the instantaneous slope. `VGroup` can be employed to group the tangent line and point of tangency for easier manipulation and clarity. Ensure all elements are within safe area margins and maintain a minimum spacing of 0.3 units.
+    - Key concepts to emphasize visually include the function's average slope transitioning to the instantaneous slope represented by the tangent line. Use `MathTex` for the derivative notation (e.g., \( f'(x) \)) and the slope formula, while using `Tex` for labels and explanations.
+
+[STORYBOARD]
+1.  **Visual Flow & Pacing (Manim Animation Sequence)**:
+    - Start with the `Axes` object representing the function graph. Use `Create` for a smooth introduction of the graph with a `run_time` of 2 seconds.
+    - **Sub-scene 1**: 
+        - **Visual Element**: The function graph (e.g., \( y = x^2 \)).
+        - **Animation Sequence**: 
+            - Create the `Axes` object and plot the function using a `Plot` object. For instance: `function = self.plot(lambda x: x**2, color=BLUE)`.
+            - Animate the creation of the graph with `Create(function)` followed by a `Wait(1)` to pause for viewer comprehension.
+        
+    - **Sub-scene 2**: 
+        - **Visual Element**: A `Dot` at a specific point on the graph (e.g., at \( (1, 1) \)).
+        - **Animation Sequence**: 
+            - Create the `Dot` object and position it at the point of tangency using `.move_to(ORIGIN + RIGHT + UP)` to ensure it is on the curve.
+            - Use `Create(dot)` to introduce the dot with a `run_time` of 1 second.
+            - Follow with `Wait(1)` for clarity.
+
+    - **Sub-scene 3**: 
+        - **Visual Element**: The tangent line at the point of tangency.
+        - **Animation Sequence**: 
+            - Create the `Line` object representing the tangent line. For example: `tangent_line = Line(start=LEFT + UP, end=RIGHT + UP, color=YELLOW)`.
+            - Use `Create(tangent_line)` with a `run_time` of 1.5 seconds.
+            - Transition to the tangent line with a `Transform` animation, shifting from the average slope (not shown here for simplicity) to the instantaneous slope.
+            - Use `Wait(1)` to allow viewers to observe the relationship.
+
+    - **Sub-scene 4**: 
+        - **Visual Element**: The mathematical expression for the derivative.
+        - **Animation Sequence**: 
+            - Create a `MathTex` object for the derivative notation (e.g., \( f'(x) \)) and position it using `.next_to(tangent_line, UP, buff=0.3)`.
+            - Use `Write(derivative_tex)` with `run_time` of 1 second to bring attention to the concept of the derivative.
+            - Finally, include a brief explanation using `Tex` (e.g., "Instantaneous Rate of Change") positioned below the derivative notation, ensuring spacing of 0.3 units.
+
+    - Throughout the scene, maintain a spacing of at least 0.3 units between all objects and respect the safe area margins of 0.5 units from the scene edges. End the scene with `Wait(2)` for viewers to digest the information presented.
+
+</SCENE_VISION_STORYBOARD_PLAN>

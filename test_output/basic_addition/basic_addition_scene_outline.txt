@@ -1,0 +1,50 @@
+<SCENE_OUTLINE>
+    <SCENE_1>
+    Scene Title: Introduction to Addition
+    Scene Purpose: Introduce the concept of addition and its importance in mathematics.
+    Scene Description: The scene will define addition as the process of combining quantities. It will present the symbols used in addition, like the plus sign (+) and equals sign (=). A simple visual representation will show two groups of objects (e.g., apples) to illustrate the concept.
+    Scene Layout: The left side will display a group of 2 apples, and the right side will display a group of 3 apples. The plus sign (+) will be centered in between the two groups, and the equals sign (=) will follow to the right side. All elements will be within the safe area margins, with 0.5 units from the edges and 0.3 units of spacing between the apples and symbols.
+    </SCENE_1>
+
+    <SCENE_2>
+    Scene Title: Visualizing Addition
+    Scene Purpose: To visually demonstrate how addition combines two groups into one.
+    Scene Description: Using the same groups from the previous scene, this scene will combine the two groups of apples into one larger group, showing the process step-by-step. The total number of apples will be counted and displayed after the combination.
+    Scene Layout: The two original groups will slide together to form one group of 5 apples at the center of the scene. The final count of 5 will be displayed prominently below the group. Maintain a 0.5 units margin and 0.3 units spacing between the groups and the final count.
+    </SCENE_2>
+
+    <SCENE_3>
+    Scene Title: Addition Equation
+    Scene Purpose: To introduce and explain the addition equation format.
+    Scene Description: This scene will show the equation 2 + 3 = 5 in a clear and engaging manner. Each component of the equation will be highlighted as it is explained (the numbers, the plus sign, and the equals sign).
+    Scene Layout: The equation will be displayed centrally, with the numbers and symbols spaced evenly. The equation will be animated to appear sequentially (2, then +, then 3, then =, and finally 5). Ensure the equation is centered in the scene with a safe margin of 0.5 units and at least 0.3 units of spacing between each element.
+    </SCENE_3>
+
+    <SCENE_4>
+    Scene Title: Real-Life Examples
+    Scene Purpose: To provide relatable examples of addition in everyday life.
+    Scene Description: This scene will depict two real-life scenarios of addition, such as counting fruits and adding toy cars. Each example will illustrate the process of addition visually and contextually.
+    Scene Layout: The left side will show a basket with 2 oranges, and the right side will show a basket with 3 oranges. The scene will transition to toy cars, showing 2 cars on the left and 3 cars on the right. Maintain a margin of 0.5 units and 0.3 units spacing between objects.
+    </SCENE_4>
+
+    <SCENE_5>
+    Scene Title: Addition with Larger Numbers
+    Scene Purpose: To introduce the concept of addition using larger numbers.
+    Scene Description: This scene will expand on the addition concept by using larger numbers, such as 10 + 15. The addition will be visually represented with larger groups of objects and will demonstrate the same principles as before.
+    Scene Layout: On the left, a group of 10 stars will be displayed, and on the right, a group of 15 stars. The plus sign will be in between, and the result will be shown below the groups. All elements will fit within the safe area margins and have a minimum spacing of 0.3 units.
+    </SCENE_5>
+
+    <SCENE_6>
+    Scene Title: Summary of Key Points
+    Scene Purpose: To summarize the concepts learned in previous scenes.
+    Scene Description: This scene will recap the definition of addition, how it is represented, and the importance of learning addition in mathematics. Key points will be animated as bullet points.
+    Scene Layout: The key points will be listed on the left side of the screen, with a visual of an addition equation on the right side. Maintain a safe margin of 0.5 units and at least 0.3 units of spacing between the list and the equation.
+    </SCENE_6>
+
+    <SCENE_7>
+    Scene Title: Conclusion and Encouragement
+    Scene Purpose: To conclude the lesson and encourage practice.
+    Scene Description: The final scene will encourage viewers to practice basic addition with fun animations. It will summarize the importance of addition in daily life and learning.
+    Scene Layout: The central area will have a large text saying "Keep Practicing!" with animations of addition problems appearing around it. Maintain safe margins of 0.5 units and ensure a minimum of 0.3 units spacing between text and animations.
+    </SCENE_7>
+</SCENE_OUTLINE>

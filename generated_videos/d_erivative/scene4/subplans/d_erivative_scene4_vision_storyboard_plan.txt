@@ -1,0 +1,41 @@
+<SCENE_VISION_STORYBOARD_PLAN>
+[SCENE_VISION]
+1.  **Scene Overview**:
+    - This scene aims to familiarize viewers with the different notations used for derivatives, such as \( f'(x) \), \( \frac{dy}{dx} \), and \( Df \). By connecting these notations with their graphical representations, viewers will gain a deeper understanding of how derivatives are visually interpreted in mathematics.
+    - **Visual learning objectives for viewers:** Use `MathTex` for derivative notations and definitions, `Axes` for graph representations, and `VGroup` to group notation with corresponding graphs. The visuals will help viewers associate mathematical symbols with their geometric interpretations.
+    - Manim visuals & animations will clearly delineate each notation and its corresponding graph, ensuring adherence to the safe area margins and the minimum spacing of 0.3 units. By using `VGroup`, related elements can be animated together effectively, maintaining spatial clarity throughout the scene.
+    - Key concepts to emphasize visually include the relationship between notations and their graphical meanings. The scene will layout each notation on the left with its definition and the graph on the right, ensuring a clean and organized presentation.
+
+[STORYBOARD]
+1.  **Visual Flow & Pacing (Manim Animation Sequence)**:
+    - Begin with the title "Derivative Notation" using `Tex`, positioned at the top center of the scene. Use `Write` animation for a duration of `2 seconds`.
+    - **Sub-scene 1**: Introduce the first notation \( f'(x) \).
+        - **Visual Element**: `MathTex(r"f'(x)")`
+        - **Animation Sequence**: 
+            - Position \( f'(x) \) using `.to_edge(LEFT, buff=0.5)`.
+            - Apply `Write` animation over `1.5 seconds`.
+            - Follow with a definition `Tex(r"\text{The derivative of } f \text{ with respect to } x")` positioned below \( f'(x) \) using `.next_to(f_prime, DOWN, buff=0.3)`, animated with `Write` for `1.5 seconds`.
+            - On the right, create an `Axes` object representing the graph of \( f(x) \). Position it with `.to_edge(RIGHT, buff=0.5)`.
+            - Plot the function and its tangent line at a point, using `Plot` and `Line`, with a `Create` animation over `2 seconds`.
+            - Leave a `Wait(2)` for viewers to absorb the information.
+    
+    - **Sub-scene 2**: Introduce the second notation \( \frac{dy}{dx} \).
+        - **Visual Element**: `MathTex(r"\frac{dy}{dx}")`
+        - **Animation Sequence**:
+            - Position \( \frac{dy}{dx} \) using `.next_to(f_prime, DOWN, buff=1)`.
+            - Apply `Write` animation over `1.5 seconds`.
+            - Present the definition `Tex(r"\text{The notation for the derivative of } y \text{ with respect to } x")` positioned below \( \frac{dy}{dx} \) using `.next_to(dy_dx, DOWN, buff=0.3)`, animated with `Write` for `1.5 seconds`.
+            - For the graph, use the same `Axes`, and plot a different function and its tangent line. Ensure the graph is clearly distinct (use different colors for the function and tangent), animated with `Create` over `2 seconds`.
+            - Leave another `Wait(2)` for clarity.
+
+    - **Sub-scene 3**: Introduce the third notation \( Df \).
+        - **Visual Element**: `MathTex(r"Df")`
+        - **Animation Sequence**:
+            - Position \( Df \) using `.next_to(dy_dx, DOWN, buff=1)`.
+            - Use `Write` animation over `1.5 seconds`.
+            - Display the definition `Tex(r"\text{This denotes the derivative of } f \text{ in a more general sense}")` below \( Df \) using `.next_to(Df, DOWN, buff=0.3)`, animated with `Write` for `1.5 seconds`.
+            - Use the same `Axes` and plot another function and its tangent, ensuring a new color scheme for clarity, animated with `Create` over `2 seconds`.
+            - Conclude with `Wait(2)` for the audience to digest the content.
+
+2.  **Scene Transition**: Fade out all elements using `FadeOut` for `2 seconds` to signify the end of the scene, preparing for the next topic.
+</SCENE_VISION_STORYBOARD_PLAN>

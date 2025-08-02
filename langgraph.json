@@ -1,0 +1,43 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "video_generation_workflow": "./src/langgraph_agents/full_workflow.py:graph",
+    "simple_workflow": "./src/langgraph_agents/simple_workflow.py:graph"
+  },
+  "env": ".env",
+  "python_version": "3.11",
+  "dockerfile_lines": [
+    "RUN apt-get update && apt-get install -y ffmpeg libsm6 libxext6 libxrender-dev libglib2.0-0",
+    "RUN pip install manim opencv-python-headless pillow",
+    "RUN mkdir -p /app/output /app/media /app/code"
+  ],
+  "store": {
+    "index": {
+      "embed": "openai:text-embedding-3-small",
+      "dims": 1536,
+      "fields": ["$"]
+    },
+    "ttl": {
+      "refresh_on_read": true,
+      "default_ttl": 1440,
+      "sweep_interval_minutes": 60
+    }
+  },
+  "checkpointer": {
+    "ttl": {
+      "strategy": "delete",
+      "sweep_interval_minutes": 30,
+      "default_ttl": 2880
+    }
+  },
+  "http": {
+    "cors": {
+      "allow_origins": ["*"],
+      "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "allow_headers": ["*"]
+    },
+    "configurable_headers": {
+      "include": ["x-session-id", "x-trace-id", "authorization"]
+    }
+  }
+}
