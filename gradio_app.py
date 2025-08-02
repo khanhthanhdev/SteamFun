@@ -297,7 +297,7 @@ def start_async_job(job_id, params):
     thread.start()
     return thread
 
-def submit_job(topic, description, max_retries, use_rag, use_visual_fix_code, temperature, use_context_learning, verbose, max_scene_concurrency, api_key):
+
 def submit_job(topic, description, max_retries, use_rag, use_visual_fix_code, temperature, use_context_learning, verbose, max_scene_concurrency, api_key):
     """Submit a new video generation job."""
     # Input validation
@@ -362,9 +362,7 @@ def submit_job(topic, description, max_retries, use_rag, use_visual_fix_code, te
             # Use OpenAI as default provider
             'provider': 'openai',
             'api_key': api_key.strip()
-            # Use OpenAI as default provider
-            'provider': 'openai',
-            'api_key': api_key.strip()
+
         }
         
         # Start job asynchronously
@@ -558,7 +556,7 @@ with gr.Blocks(
             with gr.Column(scale=1):
                 with gr.Group():
                     gr.Markdown("### 🔑 API Configuration")
-                    gr.Markdown("### 🔑 API Configuration")
+
                     
                     # Simple API key input
                     # Simple API key input
@@ -569,9 +567,7 @@ with gr.Blocks(
                         placeholder="Enter your OpenAI API key",
                         type="password",
                         value=os.getenv('OPENAI_API_KEY', ''),
-                        interactive=True,
-                        info="Your OpenAI API key for GPT-4o-mini access"
-                        info="Your OpenAI API key for GPT-4o-mini access"
+                        interactive=True
                     )
                     
                     # Display current model setting
@@ -844,7 +840,6 @@ with gr.Blocks(
         outputs=[topic_input, description_input, temperature_input, 
                 use_rag_input, use_visual_fix_code_input, use_context_learning_input, 
                 verbose_input, max_retries_input, max_scene_concurrency_input, api_key_input, result_text]
-                verbose_input, max_retries_input, max_scene_concurrency_input, api_key_input, result_text]
     )
     
     submit_btn.click(
@@ -853,7 +848,6 @@ with gr.Blocks(
             topic_input, description_input, max_retries_input,
             topic_input, description_input, max_retries_input,
             use_rag_input, use_visual_fix_code_input, temperature_input, use_context_learning_input,
-            verbose_input, max_scene_concurrency_input, api_key_input
             verbose_input, max_scene_concurrency_input, api_key_input
         ],
         outputs=[result_text, job_id_output, status_container]
