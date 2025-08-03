@@ -6,5 +6,6 @@ business logic and provide clean interfaces between API and core layers.
 """
 
 from .video_service import VideoService
+from .rag_service import RAGService
 
-__all__ = ['VideoService']
+__all__ = ['VideoService', 'RAGService']

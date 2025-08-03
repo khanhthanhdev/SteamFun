@@ -47,88 +47,148 @@
   - Create service layer for video operations
   - _Requirements: 2.2, 3.1, 3.2_
 
-- [ ] 4.2 Migrate RAG system core logic
+- [x] 4.2 Migrate RAG system core logic
+
+
+
+
   - Move RAG system code to app/core/rag/
   - Organize vector stores, embeddings, and query processing
   - Create service layer for RAG operations
   - _Requirements: 2.2, 3.1, 3.2_
 
-- [ ] 4.3 Migrate LangGraph agents core logic
+- [x] 4.3 Migrate LangGraph agents core logic
+
+
+
+
+
   - Move agent code to app/core/agents/
   - Organize agent workflows and state management
   - Create service layer for agent operations
   - _Requirements: 2.2, 3.1, 3.2_
 
-- [ ] 4.4 Migrate AWS integration core logic
+- [x] 4.4 Migrate AWS integration core logic
+
+
+
+
+
   - Move AWS integration code to app/core/aws/
   - Organize S3, DynamoDB, and other AWS services
   - Create service layer for AWS operations
   - _Requirements: 2.2, 3.1, 3.2_
 
-- [ ] 5. Create data models and schemas
-- [ ] 5.1 Implement Pydantic schemas for API
+- [x] 5. Create data models and schemas
+
+
+
+
+
+- [x] 5.1 Implement Pydantic schemas for API
+
+
   - Create request/response models for all endpoints
   - Implement data validation schemas
   - Add API documentation models
   - _Requirements: 3.3, 2.1_
 
-- [ ] 5.2 Create database models
+
+
+- [x] 5.2 Create database models fit aws RDS
+
+
+
+
+
+  - Define database schema for AWS RDS
   - Implement database entity models
   - Set up relationship mappings
   - Create migration scripts if needed
   - _Requirements: 3.3, 2.1_
 
-- [ ] 6. Implement FastAPI endpoints
-- [ ] 6.1 Create video generation API endpoints
-  - Implement video creation, status, and download endpoints
+- [-] 6. Implement FastAPI endpoints
+
+
+- [x] 6.1 Create video generation API endpoints
+
+
+  - Implement video creation, status, upload to server and download endpoints
   - Add request validation and error handling
   - Integrate with video service layer
   - _Requirements: 2.1, 2.2, 3.2_
 
-- [ ] 6.2 Create RAG system API endpoints
+- [x] 6.2 Create RAG system API endpoints
+
+
   - Implement query processing and document retrieval endpoints
   - Add search and context-aware retrieval endpoints
   - Integrate with RAG service layer
   - _Requirements: 2.1, 2.2, 3.2_
 
-- [ ] 6.3 Create LangGraph agents API endpoints
+- [x] 6.3 Create LangGraph agents API endpoints
+
+
   - Implement agent execution and workflow endpoints
   - Add agent state management endpoints
   - Integrate with agent service layer
   - _Requirements: 2.1, 2.2, 3.2_
 
-- [ ] 6.4 Create AWS integration API endpoints
+- [x] 6.4 Create AWS integration API endpoints
+
+
+
+
+
+
   - Implement S3 upload/download and metadata endpoints
   - Add DynamoDB operations endpoints
   - Integrate with AWS service layer
   - _Requirements: 2.1, 2.2, 3.2_
 
-- [ ] 7. Implement service layer
-- [ ] 7.1 Create video service implementation
+- [x] 7. Implement service layer
+
+
+
+
+
+
+- [x] 7.1 Create video service implementation
+
   - Implement video generation orchestration logic
   - Add TTS and Manim integration
   - Handle video processing pipeline
   - _Requirements: 3.1, 3.2_
 
-- [ ] 7.2 Create RAG service implementation
+- [x] 7.2 Create RAG service implementation
+
+
   - Implement document retrieval and query processing
   - Add vector store management
   - Handle embedding operations
   - _Requirements: 3.1, 3.2_
 
-- [ ] 7.3 Create agent service implementation
+- [x] 7.3 Create agent service implementation
+
+
   - Implement LangGraph workflow orchestration
   - Add agent state management
   - Handle agent execution logic
   - _Requirements: 3.1, 3.2_
 
-- [ ] 7.4 Create AWS service implementation
+- [x] 7.4 Create AWS service implementation
+
+
   - Implement S3 operations and metadata management
   - Add DynamoDB interaction logic
   - Handle AWS resource management
   - _Requirements: 3.1, 3.2_
 
 - [ ] 8. Set up utilities and helpers
+
+
+
+
   - Create logging configuration and utilities
   - Implement custom exception classes
   - Add helper functions and common utilities

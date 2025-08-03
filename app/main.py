@@ -9,13 +9,16 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-import logging
 import time
 from typing import Dict, Any
 
+from app.utils.logging import get_logger
+from app.utils.logging_config import configure_application_logging
+from app.utils.exceptions import AppException
+
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+configure_application_logging()
+logger = get_logger(__name__)
 
 # Create FastAPI application instance
 app = FastAPI(
@@ -54,6 +57,21 @@ async def add_process_time_header(request: Request, call_next):
 
 
 # Global exception handler
+@app.exception_handler(AppException)
+async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
+    """Handler for custom application exceptions"""
+    logger.error(f"Application exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error_code": exc.__class__.__name__,
+            "message": str(exc),
+            "details": None,
+            "timestamp": time.time()
+        }
+    )
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Global exception handler for unhandled exceptions"""
