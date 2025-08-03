@@ -11,9 +11,8 @@ from dotenv import load_dotenv
 
 from mllm_tools.litellm import LiteLLMWrapper
 from mllm_tools.openrouter import OpenRouterWrapper
-from src.core.video_planner import EnhancedVideoPlanner
+from app.core.video import EnhancedVideoPlanner, VideoRenderer, EnhancedVideoGenerator, VideoGenerationConfig
 from src.core.code_generator import CodeGenerator  # Use existing CodeGenerator
-from src.core.video_renderer import VideoRenderer  # Use existing VideoRenderer
 from src.utils.utils import extract_xml
 from src.config.config import Config
 from task_generator import get_banned_reasonings

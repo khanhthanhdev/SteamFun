@@ -1,11 +1,15 @@
 {
   "mcpServers": {
-    "context7": {
-      "url": "https://context7.liam.sh/mcp"
-    },
-    "serena": {
-      "command": "C:\\Users\\thanh\\.local\\bin\\uv.exe",
-      "args": ["run", "--directory", "/abs/path/to/serena", "serena", "start-mcp-server"]
-  }
+
+    "Context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ],
+      "env": {},
+      "disabled": false,
+      "autoApprove": []
+      }
   }
 }

@@ -26,7 +26,7 @@ async def generate_video_with_legacy_system(topic: str, description: str, only_p
     print("=" * 70)
     
     try:
-        from generate_video import VideoGenerationConfig, EnhancedVideoGenerator
+        from app.core.video import VideoGenerationConfig, EnhancedVideoGenerator
         
         # Create configuration
         config = VideoGenerationConfig(
