@@ -1,73 +1,132 @@
-# Integration Tests for Multi-Agent Workflows
+# Integration Tests
 
-This directory contains comprehensive integration tests for the LangGraph multi-agent system. The tests verify agent-to-agent communication, state management, error propagation, and tool integration across the entire workflow.
+This directory contains comprehensive integration tests for the FastAPI application. The tests verify API endpoints, service integrations, database operations, and external service connectivity across the entire system.
 
 ## Test Structure
 
-### Core Integration Tests
+### API Integration Tests (`test_api/`)
+
+1. **test_video_api_integration.py** - Tests video API endpoints
+   - Complete video creation workflow through API
+   - Video status checking and download
+   - API error handling and validation
+   - Concurrent request handling
+
+2. **test_rag_api_integration.py** - Tests RAG API endpoints
+   - RAG query workflow through API
+   - Document management operations
+   - API error handling and validation
+   - Query result processing
+
+3. **test_agents_api_integration.py** - Tests agent API endpoints
+   - Agent execution workflow through API
+   - Agent status monitoring
+   - Execution history retrieval
+   - Chained agent execution
+
+4. **test_aws_api_integration.py** - Tests AWS API endpoints
+   - S3 upload/download workflows through API
+   - DynamoDB metadata operations
+   - Multipart upload handling
+   - AWS service error handling
+
+### Service Integration Tests (`test_services/`)
+
+1. **test_video_service_integration.py** - Tests VideoService integrations
+   - Database integration for video operations
+   - File system integration for video processing
+   - External API integration (TTS, Animation)
+   - AWS integration for video storage
+   - Error recovery and monitoring
+
+2. **test_rag_service_integration.py** - Tests RAGService integrations
+   - Vector store integration
+   - Embedding model integration
+   - Document processing integration
+   - Caching system integration
+   - Concurrent query handling
+
+3. **test_agent_service_integration.py** - Tests AgentService integrations
+   - LangGraph workflow integration
+   - State management integration
+   - Database integration for agent operations
+   - Monitoring and error recovery
+   - Human-in-the-loop workflows
+
+### Database Integration Tests (`test_database/`)
+
+1. **test_video_database_integration.py** - Tests video database operations
+   - Video model creation and persistence
+   - Video metadata relationships
+   - Status updates and queries
+   - Performance with bulk operations
+
+2. **test_agent_database_integration.py** - Tests agent database operations
+   - Agent execution record persistence
+   - Agent state relationship management
+   - Error tracking and persistence
+   - State versioning and history
+
+3. **test_rag_database_integration.py** - Tests RAG database operations
+   - RAG query and document persistence
+   - Embedding relationship management
+   - Document search operations
+   - Performance with bulk operations
+
+### External Service Integration Tests (`test_external/`)
+
+1. **test_aws_integration.py** - Tests AWS service integrations
+   - S3 upload/download with mocked AWS
+   - DynamoDB operations with mocked AWS
+   - AWS service error handling
+
+2. **test_langgraph_integration.py** - Tests LangGraph integrations
+   - Workflow execution integration
+   - Streaming workflow integration
+   - State management integration
+   - Agent coordination and monitoring
+
+3. **test_embedding_service_integration.py** - Tests embedding service integrations
+   - OpenAI embedding service integration
+   - Sentence Transformers integration
+   - Embedding model selection and caching
+   - Performance monitoring and validation
+
+### Agent Communication Tests (`test_agents/`)
 
 1. **test_agent_communication.py** - Tests agent-to-agent communication patterns
    - Planner to CodeGenerator communication
    - Error propagation between agents
    - RAG agent integration
    - State consistency across agents
-   - Human-in-the-loop integration
-   - Monitoring agent integration
 
-2. **test_state_management.py** - Tests state management validation
-   - State immutability during agent execution
-   - State validation across workflow stages
-   - State persistence across agent transitions
-   - Error state management
-   - Concurrent state access
-   - State rollback on failure
-   - State schema evolution
-
-3. **test_error_propagation.py** - Tests error handling and recovery
-   - Single agent error recovery
-   - Cascading error propagation
-   - Error recovery strategies
-   - Human escalation workflow
-   - Error context preservation
-
-4. **test_tool_integration.py** - Tests external tool integration
-   - MCP server connectivity
-   - Context7 integration
-   - Docling document processing
-   - Human intervention tools
-   - Tool error handling
-   - Tool coordination between agents
-   - Tool performance monitoring
-
-5. **test_comprehensive_integration.py** - Complete workflow integration tests
+2. **test_comprehensive_integration.py** - Complete workflow integration tests
    - End-to-end workflow integration
    - Error recovery workflow integration
-   - Human-in-the-loop workflow integration
-   - Tool integration across agents
-   - Monitoring integration across workflow
+   - Agent coordination workflows
    - State consistency across complex workflows
 
 ## Test Categories
 
-### Agent Communication Tests
-- **Purpose**: Verify agents can communicate effectively through state updates
-- **Coverage**: Data flow, command routing, agent coordination
-- **Key Scenarios**: Planning → Code Generation → Rendering workflow
+### API Integration Tests
+- **Purpose**: Verify API endpoints work correctly with underlying services
+- **Coverage**: Request/response handling, validation, error handling, authentication
+- **Key Scenarios**: Complete workflows through API endpoints, concurrent requests
 
-### State Management Tests
-- **Purpose**: Ensure state consistency and integrity across agent transitions
-- **Coverage**: State immutability, validation, persistence, rollback
-- **Key Scenarios**: Complex state transformations, concurrent access, schema evolution
+### Service Integration Tests
+- **Purpose**: Test service layer integration with external dependencies
+- **Coverage**: Database operations, external APIs, file systems, caching
+- **Key Scenarios**: Service orchestration, error recovery, performance monitoring
 
-### Error Propagation Tests
-- **Purpose**: Validate error handling and recovery mechanisms
-- **Coverage**: Error classification, recovery strategies, escalation
-- **Key Scenarios**: Cascading failures, retry mechanisms, human intervention
+### Database Integration Tests
+- **Purpose**: Ensure database models and relationships work correctly
+- **Coverage**: CRUD operations, relationships, transactions, performance
+- **Key Scenarios**: Complex queries, bulk operations, data consistency
 
-### Tool Integration Tests
-- **Purpose**: Test external tool connectivity and coordination
-- **Coverage**: MCP servers, Context7, Docling, human tools
-- **Key Scenarios**: Multi-tool workflows, error handling, performance monitoring
+### External Service Integration Tests
+- **Purpose**: Test integration with external services and APIs
+- **Coverage**: AWS services, LangGraph workflows, embedding services
+- **Key Scenarios**: Service connectivity, error handling, fallback mechanisms
 
 ## Running the Tests
 
@@ -83,20 +142,20 @@ python -m pytest tests/integration/ -v
 
 ### Run Specific Test Categories
 ```bash
+# API integration tests
+python -m pytest tests/integration/test_api/ -v
+
+# Service integration tests
+python -m pytest tests/integration/test_services/ -v
+
+# Database integration tests
+python -m pytest tests/integration/test_database/ -v
+
+# External service integration tests
+python -m pytest tests/integration/test_external/ -v
+
 # Agent communication tests
-python -m pytest tests/integration/test_agent_communication.py -v
-
-# State management tests
-python -m pytest tests/integration/test_state_management.py -v
-
-# Error propagation tests
-python -m pytest tests/integration/test_error_propagation.py -v
-
-# Tool integration tests
-python -m pytest tests/integration/test_tool_integration.py -v
-
-# Comprehensive integration tests
-python -m pytest tests/integration/test_comprehensive_integration.py -v
+python -m pytest tests/integration/test_agents/ -v
 ```
 
 ### Run with Specific Markers
@@ -138,26 +197,25 @@ python test_integration_runner.py
 ## Coverage Areas
 
 ### Requirements Coverage
-- **1.2**: Agent coordination and communication ✓
-- **1.3**: State management across workflow ✓
-- **4.4**: Error handling and recovery ✓
+- **5.1**: Testing infrastructure properly organized ✓
+- **5.2**: Clear separation between unit, integration, and end-to-end tests ✓
+- **2.1**: FastAPI-compatible directory structure ✓
+- **3.1**: Business logic separated from framework code ✓
+- **3.2**: Clear interfaces between different layers ✓
 
-### Agent Types Tested
-- PlannerAgent ✓
-- CodeGeneratorAgent ✓
-- RendererAgent ✓
-- RAGAgent ✓
-- ErrorHandlerAgent ✓
-- HumanLoopAgent ✓
-- MonitoringAgent ✓
+### Service Types Tested
+- VideoService ✓
+- RAGService ✓
+- AgentService ✓
+- AWSService ✓
 
 ### Integration Patterns
-- Sequential workflow execution ✓
-- Parallel agent coordination ✓
-- Error recovery workflows ✓
-- Human intervention workflows ✓
-- Tool coordination workflows ✓
-- Monitoring and observability ✓
+- API endpoint workflows ✓
+- Service layer orchestration ✓
+- Database operations and relationships ✓
+- External service connectivity ✓
+- Error handling and recovery ✓
+- Performance and monitoring ✓
 
 ## Test Maintenance
 

@@ -1,13 +1,14 @@
 version: '3.8'
 
 services:
-  theoremexplain:
+  # FastAPI backend service
+  video-gen-api:
     build:
       context: .
-      dockerfile: dockerfile
-    container_name: theoremexplain-agent
+      dockerfile: Dockerfile
+    container_name: video-gen-api
     ports:
-      - "7860:7860"
+      - "8000:8000"
     volumes:
       # Mount output directory to persist generated videos
       - ./output:/app/output
@@ -15,7 +16,15 @@ services:
       - ./models:/app/models
       # Mount data directory for RAG and datasets
       - ./data:/app/data
+      # Mount logs directory
+      - ./logs:/app/logs
     environment:
+      # FastAPI settings
+      - FASTAPI_ENV=development
+      - API_V1_STR=/api/v1
+      - PROJECT_NAME=Video Generation Agents
+      # Database settings
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@db:5432/videogen
       # Copy environment variables from host .env file
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - AZURE_API_KEY=${AZURE_API_KEY}
@@ -25,6 +34,10 @@ services:
       - VERTEXAI_LOCATION=${VERTEXAI_LOCATION}
       - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # AWS settings
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
       # Kokoro TTS settings
       - KOKORO_MODEL_PATH=models/kokoro-v0_19.onnx
       - KOKORO_VOICES_PATH=models/voices.bin
@@ -32,29 +45,33 @@ services:
       - KOKORO_DEFAULT_SPEED=1.0
       - KOKORO_DEFAULT_LANG=en-us
       # Python path
-      - PYTHONPATH=/app:$PYTHONPATH
+      - PYTHONPATH=/app
+    depends_on:
+      - db
+      - redis
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "conda", "run", "-n", "tea", "python", "-c", "import src; import manim; print('Health check passed')"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
 
-  # Optional: Add a service for running batch generation
-  theoremexplain-batch:
+  # Gradio UI service (optional)
+  video-gen-ui:
     build:
       context: .
-      dockerfile: dockerfile
-    container_name: theoremexplain-batch
-    profiles:
-      - batch
+      dockerfile: Dockerfile
+    container_name: video-gen-ui
+    ports:
+      - "7860:7860"
     volumes:
       - ./output:/app/output
       - ./models:/app/models
       - ./data:/app/data
     environment:
-      # Same environment variables as main service
+      # Same environment as API service
+      - FASTAPI_API_URL=http://video-gen-api:8000
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - AZURE_API_KEY=${AZURE_API_KEY}
       - AZURE_API_BASE=${AZURE_API_BASE}
@@ -68,9 +85,83 @@ services:
       - KOKORO_DEFAULT_VOICE=af
       - KOKORO_DEFAULT_SPEED=1.0
       - KOKORO_DEFAULT_LANG=en-us
-      - PYTHONPATH=/app:$PYTHONPATH
+      - PYTHONPATH=/app
+    depends_on:
+      - video-gen-api
+    command: ["python", "gradio_app.py"]
+    restart: unless-stopped
+    profiles:
+      - ui
+
+  # PostgreSQL database
+  db:
+    image: postgres:15-alpine
+    container_name: video-gen-db
+    environment:
+      - POSTGRES_DB=videogen
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and task queues
+  redis:
+    image: redis:7-alpine
+    container_name: video-gen-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Batch processing service
+  video-gen-batch:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-gen-batch
+    profiles:
+      - batch
+    volumes:
+      - ./output:/app/output
+      - ./models:/app/models
+      - ./data:/app/data
+    environment:
+      # Same environment variables as main service
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@db:5432/videogen
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AZURE_API_KEY=${AZURE_API_KEY}
+      - AZURE_API_BASE=${AZURE_API_BASE}
+      - AZURE_API_VERSION=${AZURE_API_VERSION}
+      - VERTEXAI_PROJECT=${VERTEXAI_PROJECT}
+      - VERTEXAI_LOCATION=${VERTEXAI_LOCATION}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - KOKORO_MODEL_PATH=models/kokoro-v0_19.onnx
+      - KOKORO_VOICES_PATH=models/voices.bin
+      - KOKORO_DEFAULT_VOICE=af
+      - KOKORO_DEFAULT_SPEED=1.0
+      - KOKORO_DEFAULT_LANG=en-us
+      - PYTHONPATH=/app
+    depends_on:
+      - db
+      - redis
     command: >
-      conda run --no-capture-output -n tea python generate_video.py
+      python -m app.cli batch-generate
       --model "openai/gpt-4o-mini"
       --helper_model "openai/gpt-4o-mini"
       --output_dir "output/batch_generation"
@@ -78,3 +169,7 @@ services:
       --max_scene_concurrency 3
       --max_topic_concurrency 5
     restart: no
+
+volumes:
+  postgres_data:
+  redis_data:

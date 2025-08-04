@@ -1,292 +1,294 @@
-# End-to-End Tests for LangGraph Multi-Agent Video Generation System
+# End-to-End Tests for FastAPI Video Generation System
 
-This directory contains comprehensive end-to-end tests for the LangGraph multi-agent video generation system. These tests validate the complete workflow from planning to final video output, including performance benchmarking, human-in-the-loop scenarios, and failure recovery mechanisms.
+This directory contains comprehensive end-to-end tests for the FastAPI-based video generation system. These tests validate complete workflows from API requests to final outputs, including video generation, RAG systems, agent workflows, and AWS integration.
 
 ## Test Structure
 
-### Core Test Files
+The e2e tests are organized into three main categories:
 
-1. **test_complete_workflow.py** - Complete video generation workflow tests
-   - Full pipeline execution from planning to rendering
-   - Scene outline generation only
-   - Specific scene processing
-   - Streaming workflow execution
-   - Checkpoint management
-   - Workflow interruption and resumption
+### 1. API Tests (`test_api/`)
+- **test_complete_api_e2e.py** - Comprehensive API endpoint testing
+- **test_video_workflow_e2e.py** - Video generation API workflows
 
-2. **test_performance_benchmarking.py** - Performance and scalability tests
-   - Single workflow performance across different scenarios
-   - Concurrent workflow execution
-   - Memory usage patterns and optimization
-   - Scalability limits and breaking points
-   - Performance regression detection
+### 2. User Scenario Tests (`test_user_scenarios/`)
+- **test_comprehensive_user_scenarios.py** - Realistic user workflows
+- **test_user_journey.py** - Complete user journey testing
 
-3. **test_human_loop_scenarios.py** - Human-in-the-loop interaction tests
-   - Planning approval scenarios
-   - Code quality review workflows
-   - Visual error escalation
-   - Error recovery decision making
-   - Human intervention timeout handling
-   - Multiple intervention workflows
-   - Streaming updates during human interaction
+### 3. Workflow Tests (`test_workflows/`)
+- **test_integrated_workflows.py** - Complex integrated workflows
+- **test_complete_video_workflow.py** - End-to-end video generation
 
-4. **test_failure_recovery.py** - Failure scenarios and recovery mechanisms
-   - Agent timeout recovery
-   - Model API failure recovery with backoff
-   - Code generation error recovery using RAG
-   - Rendering failure recovery with quality adjustment
-   - Visual analysis failure recovery
-   - RAG service failure recovery
-   - Cascading failure escalation
-   - Persistent failure handling
-   - Workflow-level retry mechanisms
-   - Recovery performance impact analysis
-
-5. **test_runner.py** - Comprehensive test runner
-   - Orchestrates all end-to-end test categories
-   - Provides detailed reporting and summaries
-   - Handles test environment setup and cleanup
-   - Supports parallel test execution
+### 4. Test Infrastructure
+- **test_runner.py** - Comprehensive test runner with reporting
+- **README.md** - This documentation
 
 ## Test Categories
 
-### Complete Workflow Tests
-- **Purpose**: Validate end-to-end video generation workflows
-- **Coverage**: Planning → Code Generation → Rendering → Visual Analysis
-- **Key Scenarios**: 
-  - Full video generation pipeline
-  - Planning-only mode
-  - Specific scene processing
-  - Streaming execution with progress updates
-  - Checkpoint creation and management
-  - Workflow interruption and resumption
+### API Endpoint Testing
+**Purpose**: Validate all API endpoints and their interactions
+**Coverage**: 
+- Video generation endpoints (`/api/v1/video/*`)
+- RAG system endpoints (`/api/v1/rag/*`)
+- Agent workflow endpoints (`/api/v1/agents/*`)
+- AWS integration endpoints (`/api/v1/aws/*`)
+- Health and status endpoints
 
-### Performance Benchmarking Tests
-- **Purpose**: Measure system performance and identify bottlenecks
-- **Coverage**: Execution time, memory usage, throughput, scalability
-- **Key Scenarios**:
-  - Single workflow performance across video complexities
-  - Concurrent workflow execution
-  - Memory usage patterns and leak detection
-  - Scalability limits under increasing load
-  - Performance regression detection
+**Key Test Scenarios**:
+- Complete API workflow validation
+- Cross-service integration testing
+- Error handling and validation
+- Performance under load
+- Data consistency across endpoints
 
-### Human-in-the-Loop Tests
-- **Purpose**: Validate human intervention capabilities
-- **Coverage**: Decision points, approval workflows, timeout handling
-- **Key Scenarios**:
-  - Planning approval and modification
-  - Code quality review and fixes
-  - Visual error escalation and resolution
-  - Error recovery strategy selection
-  - Timeout handling with default actions
-  - Multiple intervention points in single workflow
-  - Real-time streaming updates during human interaction
+### User Scenario Testing
+**Purpose**: Test realistic user workflows and usage patterns
+**Coverage**:
+- Educational content creator workflows
+- Enterprise developer workflows  
+- Content marketing team workflows
+- Multi-user collaboration scenarios
+- Error recovery and resilience testing
 
-### Failure Recovery Tests
-- **Purpose**: Test system resilience and error handling
-- **Coverage**: Error detection, recovery strategies, escalation
-- **Key Scenarios**:
-  - Individual agent failures and recovery
-  - API failures with exponential backoff
-  - Code generation errors with RAG-assisted recovery
-  - Rendering failures with quality fallback
-  - Service unavailability handling
-  - Cascading failure escalation to human intervention
-  - Persistent failure handling
-  - Performance impact of recovery mechanisms
+**Key Test Scenarios**:
+- First-time user onboarding
+- Power user advanced workflows
+- Team collaboration scenarios
+- Error recovery journeys
+- Performance under realistic usage
+
+### Integrated Workflow Testing
+**Purpose**: Test complex workflows spanning multiple services
+**Coverage**:
+- Educational video creation pipeline
+- Enterprise content creation pipeline
+- Collaborative research workflows
+- System performance under load
+
+**Key Test Scenarios**:
+- Knowledge base → Content planning → Video generation → Quality assurance
+- Requirements gathering → Strategy → Multi-format generation → Distribution
+- Research planning → Data collection → Analysis → Publication
+- System integration and performance validation
 
 ## Running the Tests
 
 ### Prerequisites
 ```bash
-pip install pytest pytest-asyncio psutil
+pip install pytest pytest-asyncio psutil fastapi[all]
 ```
 
 ### Run All End-to-End Tests
 ```bash
+# Using the comprehensive test runner
 python tests/e2e/test_runner.py
+
+# Or using pytest directly
+python -m pytest tests/e2e/ -m e2e -v
 ```
 
 ### Run Specific Test Categories
 ```bash
-# Complete workflow tests
-python -m pytest tests/e2e/test_complete_workflow.py -v
+# API tests only
+python tests/e2e/test_runner.py --category api
 
-# Performance benchmarking tests
-python -m pytest tests/e2e/test_performance_benchmarking.py -v
+# User scenario tests only
+python tests/e2e/test_runner.py --category user_scenarios
 
-# Human-in-the-loop tests
-python -m pytest tests/e2e/test_human_loop_scenarios.py -v
+# Workflow tests only
+python tests/e2e/test_runner.py --category workflows
 
-# Failure recovery tests
-python -m pytest tests/e2e/test_failure_recovery.py -v
+# With verbose output
+python tests/e2e/test_runner.py --category api --verbose
+```
+
+### Run Individual Test Files
+```bash
+# Complete API tests
+python -m pytest tests/e2e/test_api/test_complete_api_e2e.py -v
+
+# User scenarios
+python -m pytest tests/e2e/test_user_scenarios/test_comprehensive_user_scenarios.py -v
+
+# Integrated workflows
+python -m pytest tests/e2e/test_workflows/test_integrated_workflows.py -v
 ```
 
 ### Run with Specific Markers
 ```bash
-# Run only end-to-end tests
+# Run only e2e tests
 python -m pytest -m e2e -v
 
-# Run only slow tests (performance benchmarking)
-python -m pytest -m slow -v
-
-# Run specific test function
-python -m pytest tests/e2e/test_complete_workflow.py::TestCompleteWorkflow::test_complete_video_generation_workflow -v
+# Run specific test method
+python -m pytest tests/e2e/test_api/test_complete_api_e2e.py::TestCompleteAPIE2E::test_video_api_complete_workflow -v
 ```
 
 ## Test Implementation Details
 
 ### Mock Strategy
-- **Workflow Mocking**: Mock LangGraph workflow execution with realistic state transitions
-- **Agent Mocking**: Mock individual agents with controlled behavior and timing
-- **Service Mocking**: Mock external services (LangFuse, RAG, MCP servers) with realistic responses
-- **State Mocking**: Use realistic VideoGenerationState with all required fields
-- **Performance Mocking**: Simulate realistic execution times and resource usage
+- **FastAPI TestClient**: Uses FastAPI's built-in test client for realistic API testing
+- **Service Mocking**: Mocks external services (AWS, databases) when not available
+- **Realistic Data**: Uses realistic request/response data for comprehensive testing
+- **Error Simulation**: Simulates various error conditions for resilience testing
 
-### Test Data
-- **Realistic Scenarios**: Tests use realistic video generation scenarios with varying complexity
-- **Configuration**: Comprehensive SystemConfig with all agent types and tools
-- **Error Scenarios**: Various error types (timeout, connection, validation, API failures)
-- **Performance Data**: Simulated execution times, memory usage, and throughput metrics
-- **Human Interaction**: Realistic human intervention scenarios with different priorities
+### Test Data and Fixtures
+- **Temporary Files**: Creates and cleans up temporary files for upload testing
+- **Mock Databases**: Uses in-memory or mock databases for testing
+- **Realistic Scenarios**: Test data represents real-world usage patterns
+- **Error Conditions**: Includes invalid data and edge cases
 
 ### Assertions and Validation
-- **Workflow Completion**: Verify workflows complete successfully with expected outputs
-- **State Consistency**: Ensure state fields are preserved and updated correctly
-- **Performance Metrics**: Validate execution times, memory usage, and throughput
-- **Error Handling**: Verify errors are properly detected, handled, and recovered
-- **Human Interaction**: Ensure human interventions are processed correctly
-- **Recovery Mechanisms**: Validate failure recovery strategies work as expected
+- **HTTP Status Codes**: Validates correct status codes for all scenarios
+- **Response Structure**: Verifies response data structure and content
+- **Workflow Completion**: Ensures workflows complete successfully
+- **Data Consistency**: Validates data consistency across API calls
+- **Performance Metrics**: Measures and validates response times
+- **Error Handling**: Verifies proper error responses and recovery
 
 ## Coverage Areas
 
-### Requirements Coverage
-- **3.1**: External API compatibility ✓
-- **3.2**: Response format consistency ✓
-- **4.4**: Error handling and recovery ✓
-- **6.1**: Performance monitoring and optimization ✓
+### API Endpoints Tested
+- ✅ Health and status endpoints
+- ✅ Video generation workflow
+- ✅ RAG document indexing and querying
+- ✅ Agent workflow execution
+- ✅ AWS integration (when available)
+- ✅ Error handling and validation
 
-### Workflow Patterns Tested
-- Sequential workflow execution ✓
-- Parallel scene processing ✓
-- Error recovery workflows ✓
-- Human intervention workflows ✓
-- Streaming execution ✓
-- Checkpoint management ✓
-- Workflow interruption and resumption ✓
+### User Workflows Tested
+- ✅ Educational content creation
+- ✅ Enterprise development workflows
+- ✅ Marketing content creation
+- ✅ Multi-user collaboration
+- ✅ Error recovery scenarios
 
-### Agent Types Tested
-- PlannerAgent ✓
-- CodeGeneratorAgent ✓
-- RendererAgent ✓
-- VisualAnalysisAgent ✓
-- RAGAgent ✓
-- ErrorHandlerAgent ✓
-- HumanLoopAgent ✓
-- MonitoringAgent ✓
+### System Integration Tested
+- ✅ RAG-Video integration
+- ✅ Agent-RAG integration
+- ✅ Video-AWS integration
+- ✅ Cross-service data flow
+- ✅ Concurrent operation handling
 
 ## Performance Benchmarks
 
-### Baseline Expectations
-- **Execution Time**: < 10 seconds for medium complexity videos
-- **Memory Usage**: < 300MB peak memory usage
-- **Throughput**: > 0.2 workflows/second
-- **Error Rate**: < 5% under normal conditions
-- **Recovery Time**: < 30 seconds for most failure scenarios
+### Response Time Expectations
+- **Health Checks**: < 100ms
+- **Simple Queries**: < 500ms
+- **Video Generation**: < 60s (mocked)
+- **RAG Queries**: < 2s
+- **Agent Workflows**: < 30s (mocked)
 
-### Scalability Targets
-- **Concurrent Load**: Support at least 4 concurrent workflows
-- **Memory Scaling**: Linear memory growth with concurrent load
-- **Throughput Scaling**: Maintain > 50% peak throughput under load
-- **Error Resilience**: < 10% error rate increase under high load
+### Throughput Expectations
+- **Concurrent Requests**: Handle 4+ concurrent requests
+- **Success Rate**: > 90% under normal load
+- **Error Recovery**: < 5s for most error scenarios
+
+### Resource Usage
+- **Memory**: Reasonable memory usage during testing
+- **CPU**: Efficient CPU utilization
+- **Network**: Minimal external network dependencies
 
 ## Test Maintenance
 
 ### Adding New Tests
-1. Follow existing test structure and naming conventions
-2. Use appropriate fixtures for system configuration and state
-3. Mock external dependencies appropriately
-4. Include both success and failure scenarios
-5. Add appropriate markers (@pytest.mark.asyncio, @pytest.mark.e2e)
-6. Update test_runner.py to include new test categories
+1. **Follow Structure**: Use existing test structure and naming conventions
+2. **Use Fixtures**: Leverage existing fixtures for setup and teardown
+3. **Mock Appropriately**: Mock external dependencies that aren't available
+4. **Include Error Cases**: Test both success and failure scenarios
+5. **Add Markers**: Use `@pytest.mark.e2e` for all e2e tests
+6. **Update Runner**: Add new test categories to test_runner.py if needed
 
 ### Updating Tests
-1. Update tests when agent interfaces change
-2. Maintain backward compatibility where possible
-3. Update mock responses when external APIs change
-4. Keep test data realistic and representative
-5. Update performance baselines based on actual measurements
+1. **API Changes**: Update tests when API endpoints change
+2. **Mock Updates**: Update mocks when external service interfaces change
+3. **Data Updates**: Keep test data realistic and current
+4. **Performance Baselines**: Update performance expectations based on measurements
 
-### Performance Considerations
-- Tests use minimal delays for timing simulation
-- Mock responses are lightweight to avoid test slowdown
-- Concurrent tests are limited to avoid resource contention
-- Test data sizes are kept reasonable for fast execution
-- Memory usage is monitored and cleaned up properly
+### Best Practices
+- **Deterministic**: Tests should be deterministic and not flaky
+- **Independent**: Tests should not depend on each other
+- **Fast**: Keep tests as fast as possible while maintaining realism
+- **Clear**: Use descriptive test names and clear assertions
+- **Maintainable**: Write tests that are easy to understand and modify
 
 ## Troubleshooting
 
 ### Common Issues
-1. **Import Errors**: Ensure all dependencies are installed and paths are correct
-2. **Async Test Issues**: Verify pytest-asyncio is installed and configured
-3. **Mock Failures**: Check that mocked services match expected interfaces
-4. **State Errors**: Ensure all required state fields are included in test data
-5. **Performance Issues**: Check system resources and reduce concurrent test load
+1. **Import Errors**: Ensure all dependencies are installed
+2. **Service Unavailable**: Some tests may skip if external services aren't available
+3. **Timing Issues**: Async operations may need adjustment for different environments
+4. **Mock Failures**: Verify mocks match expected service interfaces
 
 ### Debug Tips
-1. Use `-v` flag for verbose output
-2. Use `--tb=long` for detailed tracebacks
-3. Add print statements in test methods for debugging
-4. Use `pytest.set_trace()` for interactive debugging
-5. Run individual tests to isolate issues
-6. Check temporary directories for test artifacts
-7. Monitor system resources during test execution
+1. **Verbose Output**: Use `-v` flag for detailed test output
+2. **Individual Tests**: Run single tests to isolate issues
+3. **Print Debugging**: Add print statements for debugging
+4. **Test Client**: Use FastAPI test client for manual API testing
+5. **Logs**: Check application logs for detailed error information
+
+### Environment Issues
+- **Dependencies**: Ensure all required packages are installed
+- **Permissions**: Check file system permissions for temporary files
+- **Resources**: Ensure sufficient system resources for concurrent tests
+- **Network**: Some tests may require network access (handled gracefully)
+
+## Test Results and Reporting
+
+### Test Runner Features
+- **Comprehensive Reporting**: Detailed execution reports with metrics
+- **Category-based Execution**: Run specific test categories
+- **Performance Metrics**: Execution time and success rate tracking
+- **System Information**: Captures system info for debugging
+- **Recommendations**: Provides actionable recommendations based on results
+
+### Report Contents
+- **Execution Summary**: Overall test execution statistics
+- **Category Results**: Results for each test category
+- **Performance Metrics**: Timing and throughput measurements
+- **System Information**: Environment and resource information
+- **Recommendations**: Suggestions for improvements
+
+### Interpreting Results
+- **Success Rate**: Percentage of tests passing
+- **Execution Time**: Time taken for each category
+- **Error Analysis**: Details of any failures
+- **Performance Trends**: Comparison with baseline expectations
+
+## Integration with CI/CD
+
+### Continuous Integration
+```bash
+# In CI pipeline
+python tests/e2e/test_runner.py --no-report
+```
+
+### Quality Gates
+- **Minimum Success Rate**: 90% of tests must pass
+- **Performance Thresholds**: Response times within expected ranges
+- **No Critical Failures**: No failures in core functionality tests
 
 ## Future Enhancements
 
-### Planned Additions
-- Integration with actual MCP servers (optional)
-- Visual workflow validation tests
-- Load testing for production scenarios
-- Stress testing for extreme failure conditions
-- Integration with CI/CD pipelines
-- Test result analytics and trending
+### Planned Improvements
+- **Visual Testing**: Screenshot comparison for UI components
+- **Load Testing**: Stress testing under high load
+- **Security Testing**: Security-focused test scenarios
+- **Database Integration**: Tests with real database instances
+- **Monitoring Integration**: Integration with monitoring systems
 
-### Test Infrastructure Improvements
-- Automated test data generation
-- Test result reporting and analytics
-- Continuous integration setup
-- Test coverage reporting
-- Performance regression detection
-- Automated baseline updates
+### Test Infrastructure
+- **Parallel Execution**: Run tests in parallel for faster execution
+- **Test Data Management**: Automated test data generation and cleanup
+- **Result Analytics**: Historical test result analysis and trending
+- **Automated Reporting**: Integration with reporting systems
 
 ## Contributing
 
-When contributing to end-to-end tests:
+When contributing to e2e tests:
 
-1. **Test Design**: Design tests to be realistic and representative of actual usage
-2. **Performance**: Keep tests efficient while maintaining realistic scenarios
-3. **Reliability**: Ensure tests are deterministic and don't have flaky behavior
-4. **Documentation**: Document test scenarios and expected outcomes
-5. **Maintenance**: Write tests that are easy to maintain and update
-6. **Coverage**: Ensure new features have corresponding end-to-end test coverage
+1. **Test Design**: Design tests to represent real user scenarios
+2. **Documentation**: Document test scenarios and expected outcomes
+3. **Performance**: Keep tests efficient while maintaining coverage
+4. **Reliability**: Ensure tests are stable and not flaky
+5. **Maintenance**: Write maintainable and understandable tests
 
-## Test Results Interpretation
-
-### Success Criteria
-- All workflow tests pass with expected state transitions
-- Performance tests meet baseline expectations
-- Human-loop tests handle all intervention scenarios correctly
-- Failure recovery tests demonstrate proper error handling and recovery
-- No memory leaks or resource issues detected
-
-### Failure Analysis
-- Check test logs for specific failure points
-- Verify mock configurations match expected interfaces
-- Ensure test data is realistic and complete
-- Check for timing issues in async operations
-- Validate state transitions and field updates
-- Monitor resource usage for performance issues
-
-The end-to-end test suite provides comprehensive validation of the LangGraph multi-agent video generation system, ensuring reliability, performance, and user experience across all supported scenarios.
+The end-to-end test suite provides comprehensive validation of the FastAPI video generation system, ensuring reliability, performance, and user experience across all supported workflows and use cases.
