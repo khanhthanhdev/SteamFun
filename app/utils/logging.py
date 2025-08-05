@@ -6,9 +6,13 @@ import logging
 import logging.config
 import sys
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 import json
 from datetime import datetime
+import functools
+import time
+import asyncio
+from contextlib import contextmanager
 
 
 class JSONFormatter(logging.Formatter):
@@ -204,3 +208,219 @@ class LoggerMixin:
     def log_warning(self, message: str, **kwargs) -> None:
         """Log warning message with optional context."""
         self.logger.warning(message, extra={"extra_fields": kwargs} if kwargs else None)
+
+
+@contextmanager
+def log_context(**context):
+    """Context manager to add temporary logging context."""
+    logger = logging.getLogger()
+    context_filter = ContextFilter(context)
+    
+    # Add filter to all handlers
+    for handler in logger.handlers:
+        handler.addFilter(context_filter)
+    
+    try:
+        yield
+    finally:
+        # Remove filter from all handlers
+        for handler in logger.handlers:
+            handler.removeFilter(context_filter)
+
+
+def log_method_calls(logger_name: Optional[str] = None):
+    """
+    Decorator to log method calls with arguments and return values.
+    
+    Args:
+        logger_name: Optional logger name, defaults to module name
+    """
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            logger = get_logger(logger_name or func.__module__)
+            
+            # Log method entry
+            logger.debug(
+                f"Entering {func.__name__}",
+                extra={
+                    "extra_fields": {
+                        "function": func.__name__,
+                        "args": str(args[1:]) if args else str(args),  # Skip 'self' for methods
+                        "kwargs": {k: str(v) for k, v in kwargs.items()}
+                    }
+                }
+            )
+            
+            start_time = time.time()
+            try:
+                result = func(*args, **kwargs)
+                duration = time.time() - start_time
+                
+                # Log successful completion
+                logger.debug(
+                    f"Completed {func.__name__} in {duration:.3f}s",
+                    extra={
+                        "extra_fields": {
+                            "function": func.__name__,
+                            "duration": duration,
+                            "success": True
+                        }
+                    }
+                )
+                return result
+                
+            except Exception as e:
+                duration = time.time() - start_time
+                
+                # Log error
+                logger.error(
+                    f"Error in {func.__name__} after {duration:.3f}s: {str(e)}",
+                    exc_info=True,
+                    extra={
+                        "extra_fields": {
+                            "function": func.__name__,
+                            "duration": duration,
+                            "success": False,
+                            "error": str(e)
+                        }
+                    }
+                )
+                raise
+        
+        return wrapper
+    return decorator
+
+
+def log_async_method_calls(logger_name: Optional[str] = None):
+    """
+    Decorator to log async method calls with arguments and return values.
+    
+    Args:
+        logger_name: Optional logger name, defaults to module name
+    """
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            logger = get_logger(logger_name or func.__module__)
+            
+            # Log method entry
+            logger.debug(
+                f"Entering async {func.__name__}",
+                extra={
+                    "extra_fields": {
+                        "function": func.__name__,
+                        "args": str(args[1:]) if args else str(args),  # Skip 'self' for methods
+                        "kwargs": {k: str(v) for k, v in kwargs.items()}
+                    }
+                }
+            )
+            
+            start_time = time.time()
+            try:
+                result = await func(*args, **kwargs)
+                duration = time.time() - start_time
+                
+                # Log successful completion
+                logger.debug(
+                    f"Completed async {func.__name__} in {duration:.3f}s",
+                    extra={
+                        "extra_fields": {
+                            "function": func.__name__,
+                            "duration": duration,
+                            "success": True
+                        }
+                    }
+                )
+                return result
+                
+            except Exception as e:
+                duration = time.time() - start_time
+                
+                # Log error
+                logger.error(
+                    f"Error in async {func.__name__} after {duration:.3f}s: {str(e)}",
+                    exc_info=True,
+                    extra={
+                        "extra_fields": {
+                            "function": func.__name__,
+                            "duration": duration,
+                            "success": False,
+                            "error": str(e)
+                        }
+                    }
+                )
+                raise
+        
+        return wrapper
+    return decorator
+
+
+def log_api_request(logger_name: Optional[str] = None):
+    """
+    Decorator specifically for logging API requests.
+    
+    Args:
+        logger_name: Optional logger name
+    """
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            logger = get_logger(logger_name or "api")
+            
+            # Extract request info (assuming FastAPI request object)
+            request = None
+            for arg in args:
+                if hasattr(arg, 'method') and hasattr(arg, 'url'):
+                    request = arg
+                    break
+            
+            if request:
+                logger.info(
+                    f"API Request: {request.method} {request.url.path}",
+                    extra={
+                        "extra_fields": {
+                            "method": request.method,
+                            "path": request.url.path,
+                            "query_params": str(request.query_params),
+                            "client_ip": getattr(request.client, 'host', 'unknown') if request.client else 'unknown'
+                        }
+                    }
+                )
+            
+            start_time = time.time()
+            try:
+                result = await func(*args, **kwargs)
+                duration = time.time() - start_time
+                
+                logger.info(
+                    f"API Response: {func.__name__} completed in {duration:.3f}s",
+                    extra={
+                        "extra_fields": {
+                            "endpoint": func.__name__,
+                            "duration": duration,
+                            "success": True
+                        }
+                    }
+                )
+                return result
+                
+            except Exception as e:
+                duration = time.time() - start_time
+                
+                logger.error(
+                    f"API Error: {func.__name__} failed after {duration:.3f}s: {str(e)}",
+                    exc_info=True,
+                    extra={
+                        "extra_fields": {
+                            "endpoint": func.__name__,
+                            "duration": duration,
+                            "success": False,
+                            "error": str(e)
+                        }
+                    }
+                )
+                raise
+        
+        return wrapper
+    return decorator

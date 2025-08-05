@@ -1,24 +1,16 @@
 """
-Services module for LangGraph agents.
+Service layer for the LangGraph video generation workflow.
 
-This module contains high-level services that provide functionality
-to agents, including external integrations and shared resources.
+This module contains business logic services that are extracted from agents
+to follow separation of concerns and single responsibility principles.
 """
 
-from .mcp_service import (
-    MCPService,
-    mcp_service,
-    mcp_service_context,
-    initialize_mcp_service,
-    shutdown_mcp_service,
-    get_mcp_tools
-)
+from .planning_service import PlanningService
+from .code_generation_service import CodeGenerationService
+from .rendering_service import RenderingService
 
 __all__ = [
-    "MCPService",
-    "mcp_service", 
-    "mcp_service_context",
-    "initialize_mcp_service",
-    "shutdown_mcp_service",
-    "get_mcp_tools"
+    'PlanningService',
+    'CodeGenerationService',
+    'RenderingService'
 ]

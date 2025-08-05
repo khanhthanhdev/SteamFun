@@ -13,7 +13,8 @@ from .exceptions import (
     AWSCredentialsError, 
     AWSS3Error,
     AWSDynamoDBError,
-    AWSMetadataError
+    AWSMetadataError,
+    AWSMediaConvertError
 )
 from .logging_config import setup_aws_logging
 from .s3_video_upload import S3VideoUploadService, VideoChunk, ProgressPercentage
@@ -25,6 +26,15 @@ from .multipart_upload_handler import (
     MultipartProgressTracker
 )
 from .metadata_service import MetadataService
+from .cloudfront_service import CloudFrontService
+from .mediaconvert_service import (
+    MediaConvertService, 
+    TranscodingJobConfig, 
+    TranscodingJobResult, 
+    TranscodingStatus, 
+    OutputFormat, 
+    QualityLevel
+)
 from .aws_integration_service import AWSIntegrationService
 
 __all__ = [
@@ -36,6 +46,7 @@ __all__ = [
     'AWSS3Error',
     'AWSDynamoDBError',
     'AWSMetadataError',
+    'AWSMediaConvertError',
     'setup_aws_logging',
     'S3VideoUploadService',
     'VideoChunk',
@@ -48,5 +59,12 @@ __all__ = [
     'UploadPart',
     'MultipartProgressTracker',
     'MetadataService',
+    'CloudFrontService',
+    'MediaConvertService',
+    'TranscodingJobConfig',
+    'TranscodingJobResult',
+    'TranscodingStatus',
+    'OutputFormat',
+    'QualityLevel',
     'AWSIntegrationService'
 ]

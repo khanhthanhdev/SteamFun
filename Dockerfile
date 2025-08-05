@@ -1,23 +1,21 @@
-# Optimized Dockerfile for Hugging Face Spaces
-FROM python:3.12-slim
+# Multi-stage Dockerfile for FastAPI application
+FROM python:3.12-slim as base
 
 # Set working directory
 WORKDIR /app
 
-# Set environment variables for HF Spaces
+# Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app:/app/src \
-    GRADIO_SERVER_NAME=0.0.0.0 \
-    GRADIO_SERVER_PORT=7860 \
+    PYTHONPATH=/app \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
     HF_HOME=/app/.cache/huggingface \
     HF_HUB_CACHE=/app/.cache/huggingface/hub \
     TRANSFORMERS_CACHE=/app/.cache/transformers \
     SENTENCE_TRANSFORMERS_HOME=/app/.cache/sentence_transformers \
-    PATH="/root/.TinyTeX/bin/x86_64-linux:$PATH" \
-    GRADIO_ALLOW_FLAGGING=never \
-    GRADIO_ANALYTICS_ENABLED=False \
-    HF_HUB_DISABLE_TELEMETRY=1
+    PATH="/root/.TinyTeX/bin/x86_64-linux:$PATH"
 
 # Install system dependencies in single layer
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -43,9 +41,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 
 # Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir  torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir  -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu \
+COPY requirements.txt pyproject.toml ./
+RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir -e . \
+    && python -c "import fastapi; print(f'FastAPI version: {fastapi.__version__}')" \
     && python -c "import gradio; print(f'Gradio version: {gradio.__version__}')" \
     && find /usr/local -name "*.pyc" -delete \
     && find /usr/local -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
@@ -63,9 +63,15 @@ RUN mkdir -p models && cd models \
         "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/voices.bin" \
     && ls -la /app/models/
 
-# Copy all project files and folders
-COPY . .
+# Copy application code
+COPY app/ ./app/
+COPY src/ ./src/
+COPY scripts/ ./scripts/
+COPY data/ ./data/
+COPY .env.example ./
+COPY gradio_app.py ./
 
+# Set Python path for the new structure
 ENV PYTHONPATH="/app:$PYTHONPATH"
 RUN echo "export PYTHONPATH=/app:\$PYTHONPATH" >> ~/.bashrc
 
@@ -88,18 +94,21 @@ RUN mkdir -p output tmp logs \
     && chmod 755 /app/models \
     && ls -la /app/models/ \
     && echo "Cache directories created with proper permissions"
-# Add HF Spaces specific metadata
-LABEL space.title="Text 2 Mnaim" \
-      space.sdk="docker" \
-      space.author="khanhthanhdev" \
-      space.description="Text to science video using multi Agent"
+# Add application metadata
+LABEL app.name="Video Generation Agents" \
+      app.version="0.1.0" \
+      app.description="FastAPI-based multi-agent video generation system"
 
-# Expose the port that HF Spaces expects
-EXPOSE 7860
+# Expose ports for FastAPI and Gradio
+EXPOSE 8000 7860
 
-# Health check optimized for HF Spaces
+# Health check for FastAPI
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=2 \
-    CMD curl -f http://localhost:7860/ || exit 1
+    CMD curl -f http://localhost:8000/health || exit 1
 
-# Run the Gradio app with HF Spaces optimized settings
-CMD ["python", "gradio_app.py"]
+# Default command runs FastAPI server
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+# Alternative commands for different modes:
+# For Gradio UI: CMD ["python", "gradio_app.py"]
+# For production: CMD ["gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]

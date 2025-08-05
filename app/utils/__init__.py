@@ -14,6 +14,9 @@ from .exceptions import (
     RAGError,
     AgentError,
     AWSError,
+    ConfigurationError,
+    AuthenticationError,
+    AuthorizationError,
 )
 
 from .logging import (
@@ -24,6 +27,10 @@ from .logging import (
     get_logger,
     log_function_call,
     log_performance,
+    log_context,
+    log_method_calls,
+    log_async_method_calls,
+    log_api_request,
 )
 
 from .logging_config import (
@@ -62,6 +69,57 @@ from .helpers import (
     is_valid_uuid,
 )
 
+from .validators import (
+    ValidationResult,
+    Validator,
+    RequiredValidator,
+    StringValidator,
+    NumberValidator,
+    EmailValidator,
+    URLValidator,
+    UUIDValidator,
+    DateTimeValidator,
+    FileValidator,
+    ListValidator,
+    DictValidator,
+    validate_data,
+    validate_and_raise,
+)
+
+from .security import (
+    hash_password,
+    verify_password,
+    generate_secure_token,
+    generate_api_key,
+    create_jwt_token,
+    verify_jwt_token,
+    create_hmac_signature,
+    verify_hmac_signature,
+    encrypt_data,
+    decrypt_data,
+    generate_encryption_key,
+    sanitize_input,
+    is_safe_path,
+    generate_csrf_token,
+    constant_time_compare,
+    rate_limit_key,
+    SecurityHeaders,
+)
+
+from .monitoring import (
+    PerformanceMetric,
+    SystemMetrics,
+    MetricsCollector,
+    metrics_collector,
+    get_system_metrics,
+    monitor_performance,
+    monitor_async_performance,
+    PerformanceMonitor,
+    AsyncPerformanceMonitor,
+    start_system_monitoring,
+    get_performance_summary,
+)
+
 __all__ = [
     # Exceptions
     "AppException",
@@ -73,6 +131,9 @@ __all__ = [
     "RAGError",
     "AgentError",
     "AWSError",
+    "ConfigurationError",
+    "AuthenticationError",
+    "AuthorizationError",
     # Logging
     "JSONFormatter",
     "ContextFilter",
@@ -81,6 +142,10 @@ __all__ = [
     "get_logger",
     "log_function_call",
     "log_performance",
+    "log_context",
+    "log_method_calls",
+    "log_async_method_calls",
+    "log_api_request",
     "get_logging_config",
     "configure_application_logging",
     "get_service_logger_context",
@@ -112,4 +177,49 @@ __all__ = [
     "camel_to_snake",
     "snake_to_camel",
     "is_valid_uuid",
+    # Validators
+    "ValidationResult",
+    "Validator",
+    "RequiredValidator",
+    "StringValidator",
+    "NumberValidator",
+    "EmailValidator",
+    "URLValidator",
+    "UUIDValidator",
+    "DateTimeValidator",
+    "FileValidator",
+    "ListValidator",
+    "DictValidator",
+    "validate_data",
+    "validate_and_raise",
+    # Security
+    "hash_password",
+    "verify_password",
+    "generate_secure_token",
+    "generate_api_key",
+    "create_jwt_token",
+    "verify_jwt_token",
+    "create_hmac_signature",
+    "verify_hmac_signature",
+    "encrypt_data",
+    "decrypt_data",
+    "generate_encryption_key",
+    "sanitize_input",
+    "is_safe_path",
+    "generate_csrf_token",
+    "constant_time_compare",
+    "rate_limit_key",
+    "SecurityHeaders",
+    # Monitoring
+    "PerformanceMetric",
+    "SystemMetrics",
+    "MetricsCollector",
+    "metrics_collector",
+    "get_system_metrics",
+    "monitor_performance",
+    "monitor_async_performance",
+    "PerformanceMonitor",
+    "AsyncPerformanceMonitor",
+    "start_system_monitoring",
+    "get_performance_summary",
 ]

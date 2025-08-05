@@ -1,5 +1,5 @@
 # Git and version control
-.git
+.git/
 .gitignore
 *.md
 !README.md
@@ -29,6 +29,10 @@ MANIFEST
 
 # Virtual environments
 .env
+.env.local
+.env.development
+.env.test
+.env.production
 .venv
 env/
 venv/
@@ -53,8 +57,12 @@ tea_env/
 ehthumbs.db
 Thumbs.db
 
-# Output directories (will be created in container)
+# Output directories (will be mounted as volumes)
 output/
+generated_videos/
+demo_output/
+example_output/
+test_output/
 *.mp4
 *.srt
 *.wav
@@ -65,13 +73,15 @@ thumbnails/
 *.jpg
 *.jpeg
 
-# Log files
+# Log files (will be mounted as volumes)
+logs/
 *.log
 gradio_app.log
 
 # Cache directories
 .cache/
 .pytest_cache/
+chroma_db/
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -85,11 +95,41 @@ Miniconda3-*.sh
 # Documentation that's not needed in container
 docs/
 
-# Test files
+# Test files (not needed in production)
+tests/
 test_*.py
+*_test.py
 
-# Models will be downloaded in container, so exclude local ones
-# But keep the directory structure
+# Models (will be mounted as volumes)
 models/*.onnx
 models/*.bin
-```
+
+# Data directories (will be mounted as volumes)
+data/
+
+# Development and CI files
+.github/
+.gitlab-ci.yml
+scripts/
+examples/
+
+# Kiro specs (development only)
+.kiro/
+
+# LangGraph API cache
+.langgraph_api/
+
+# Configuration backups
+config/backup/
+
+# Docker files (not needed inside container)
+.dockerignore
+docker-compose*.yml
+Dockerfile*
+
+# FastAPI specific
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/
