@@ -183,7 +183,7 @@
   - Add DynamoDB interaction logic
   - Handle AWS resource management
   - _Requirements: 3.1, 3.2_
-
+ 
 - [ ] 8. Set up utilities and helpers
 
 
