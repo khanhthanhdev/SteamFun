@@ -43,7 +43,16 @@ from app.models.schemas.aws import (
     AWSConfigResponse,
     S3ListResponse,
     S3DeleteRequest,
-    S3DeleteResponse
+    S3DeleteResponse,
+    TranscodingJobRequest,
+    TranscodingJobResponse,
+    TranscodingJobStatusResponse,
+    TranscodingJobListResponse,
+    TranscodingJobCancelRequest,
+    TranscodingJobCancelResponse,
+    IntegratedTranscodingUploadRequest,
+    IntegratedTranscodingUploadResponse,
+    MediaConvertHealthResponse
 )
 from app.services.aws_service import AWSService
 from app.core.aws.exceptions import AWSIntegrationError, AWSS3Error, AWSMetadataError
@@ -1000,4 +1009,217 @@ async def batch_upload_files(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Batch upload failed: {str(e)}"
+        )
+
+
+# MediaConvert Transcoding Endpoints
+
+@router.post("/transcoding/job", response_model=TranscodingJobResponse)
+async def create_transcoding_job(
+    request: TranscodingJobRequest,
+    background_tasks: BackgroundTasks,
+    aws_service: AWSService = Depends(get_aws_service)
+):
+    """
+    Create a transcoding job for adaptive bitrate streaming.
+    
+    - **input_s3_path**: S3 path to input video file
+    - **output_s3_prefix**: S3 prefix for output files
+    - **video_id**: Video identifier
+    - **project_id**: Project identifier
+    - **output_formats**: Output formats (HLS, DASH, MP4)
+    - **quality_levels**: Quality levels (1080p, 720p, 480p)
+    - **metadata**: Additional metadata
+    - **wait_for_completion**: Whether to wait for job completion
+    - **timeout_minutes**: Timeout in minutes for completion wait
+    """
+    try:
+        result = await aws_service.create_transcoding_job(request)
+        
+        return result
+        
+    except AWSIntegrationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Transcoding job creation failed: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Transcoding job creation failed: {str(e)}"
+        )
+
+
+@router.get("/transcoding/job/{job_id}", response_model=TranscodingJobStatusResponse)
+async def get_transcoding_job_status(
+    job_id: str,
+    aws_service: AWSService = Depends(get_aws_service)
+):
+    """
+    Get the status of a transcoding job.
+    
+    - **job_id**: MediaConvert job ID
+    """
+    try:
+        result = await aws_service.get_transcoding_job_status(job_id)
+        
+        return result
+        
+    except AWSIntegrationError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Transcoding job not found: {job_id}"
+            )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get transcoding job status: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get transcoding job status: {str(e)}"
+        )
+
+
+@router.get("/transcoding/jobs", response_model=TranscodingJobListResponse)
+async def list_transcoding_jobs(
+    status: Optional[str] = None,
+    max_results: int = 20,
+    aws_service: AWSService = Depends(get_aws_service)
+):
+    """
+    List transcoding jobs.
+    
+    - **status**: Optional status filter (SUBMITTED, PROGRESSING, COMPLETE, CANCELED, ERROR)
+    - **max_results**: Maximum number of results (1-100)
+    """
+    try:
+        if max_results < 1 or max_results > 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="max_results must be between 1 and 100"
+            )
+        
+        result = await aws_service.list_transcoding_jobs(status, max_results)
+        
+        return result
+        
+    except AWSIntegrationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list transcoding jobs: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list transcoding jobs: {str(e)}"
+        )
+
+
+@router.delete("/transcoding/job/{job_id}", response_model=TranscodingJobCancelResponse)
+async def cancel_transcoding_job(
+    job_id: str,
+    reason: Optional[str] = None,
+    aws_service: AWSService = Depends(get_aws_service)
+):
+    """
+    Cancel a transcoding job.
+    
+    - **job_id**: MediaConvert job ID to cancel
+    - **reason**: Optional reason for cancellation
+    """
+    try:
+        request = TranscodingJobCancelRequest(job_id=job_id, reason=reason)
+        result = await aws_service.cancel_transcoding_job(request)
+        
+        return result
+        
+    except AWSIntegrationError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Transcoding job not found: {job_id}"
+            )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to cancel transcoding job: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to cancel transcoding job: {str(e)}"
+        )
+
+
+@router.post("/transcoding/upload", response_model=IntegratedTranscodingUploadResponse)
+async def upload_video_with_transcoding(
+    request: IntegratedTranscodingUploadRequest,
+    background_tasks: BackgroundTasks,
+    aws_service: AWSService = Depends(get_aws_service)
+):
+    """
+    Upload video and trigger transcoding in a single operation.
+    
+    - **video_file_path**: Local video file path
+    - **code_content**: Optional code content
+    - **project_id**: Project identifier
+    - **video_id**: Video identifier
+    - **title**: Video title
+    - **description**: Video description
+    - **version**: Version number
+    - **output_formats**: Transcoding output formats
+    - **quality_levels**: Transcoding quality levels
+    - **wait_for_transcoding**: Whether to wait for transcoding completion
+    - **enable_cdn**: Whether to enable CloudFront CDN
+    - **metadata**: Additional metadata
+    """
+    try:
+        if not os.path.exists(request.video_file_path):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Video file not found: {request.video_file_path}"
+            )
+        
+        result = await aws_service.upload_video_with_transcoding(request)
+        
+        return result
+        
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Video file not found: {request.video_file_path}"
+        )
+    except AWSIntegrationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Integrated transcoding upload failed: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Integrated transcoding upload failed: {str(e)}"
+        )
+
+
+@router.get("/transcoding/health", response_model=MediaConvertHealthResponse)
+async def get_mediaconvert_health(
+    aws_service: AWSService = Depends(get_aws_service)
+):
+    """
+    Get MediaConvert service health status.
+    """
+    try:
+        result = await aws_service.get_mediaconvert_health()
+        
+        return result
+        
+    except Exception as e:
+        # Return unhealthy status instead of raising exception
+        return MediaConvertHealthResponse(
+            status='unhealthy',
+            region=aws_service.config.region,
+            enabled=False,
+            timestamp=datetime.utcnow(),
+            error=str(e)
         )

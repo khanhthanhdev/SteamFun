@@ -48,7 +48,16 @@ from app.models.schemas.aws import (
     S3ObjectInfo,
     S3ListResponse,
     S3DeleteRequest,
-    S3DeleteResponse
+    S3DeleteResponse,
+    TranscodingJobRequest,
+    TranscodingJobResponse,
+    TranscodingJobStatusResponse,
+    TranscodingJobListResponse,
+    TranscodingJobCancelRequest,
+    TranscodingJobCancelResponse,
+    IntegratedTranscodingUploadRequest,
+    IntegratedTranscodingUploadResponse,
+    MediaConvertHealthResponse
 )
 from app.models.enums import AWSServiceType
 from app.utils.exceptions import ServiceError, ValidationError
@@ -609,6 +618,376 @@ class AWSService:
         except Exception as e:
             logger.error(f"Integrated upload failed: {e}")
             raise AWSIntegrationError(f"Integrated upload failed: {str(e)}") from e
+    
+    # MediaConvert Transcoding Operations
+    
+    async def create_transcoding_job(self, request: TranscodingJobRequest) -> TranscodingJobResponse:
+        """
+        Create a transcoding job for adaptive bitrate streaming.
+        
+        Args:
+            request: Transcoding job request
+            
+        Returns:
+            TranscodingJobResponse: Created job information
+        """
+        try:
+            if not self.integration_service:
+                raise ServiceError("AWS integration service not available")
+            
+            # Convert string formats to enums
+            from app.core.aws.mediaconvert_service import OutputFormat, QualityLevel
+            
+            output_formats = []
+            for fmt in request.output_formats:
+                try:
+                    output_formats.append(OutputFormat(fmt.upper()))
+                except ValueError:
+                    logger.warning(f"Unknown output format: {fmt}")
+            
+            quality_levels = []
+            for qual in request.quality_levels:
+                try:
+                    quality_levels.append(QualityLevel(qual.lower()))
+                except ValueError:
+                    logger.warning(f"Unknown quality level: {qual}")
+            
+            # Create transcoding job
+            job_id = await self.integration_service.create_transcoding_job(
+                input_s3_path=request.input_s3_path,
+                output_s3_prefix=request.output_s3_prefix,
+                video_id=request.video_id,
+                project_id=request.project_id,
+                output_formats=output_formats,
+                quality_levels=quality_levels,
+                metadata=request.metadata
+            )
+            
+            # Wait for completion if requested
+            job_result = None
+            if request.wait_for_completion:
+                job_result = await self.integration_service.wait_for_transcoding_completion(
+                    job_id, request.timeout_minutes
+                )
+            else:
+                job_result = await self.integration_service.get_transcoding_job_status(job_id)
+            
+            # Estimate completion time (rough estimate based on video length)
+            estimated_completion = None
+            if job_result.status.value in ['SUBMITTED', 'PROGRESSING']:
+                estimated_completion = datetime.utcnow() + timedelta(minutes=30)  # Rough estimate
+            
+            return TranscodingJobResponse(
+                job_id=job_id,
+                status=job_result.status.value,
+                input_s3_path=request.input_s3_path,
+                output_s3_prefix=request.output_s3_prefix,
+                video_id=request.video_id,
+                project_id=request.project_id,
+                output_formats=request.output_formats,
+                quality_levels=request.quality_levels,
+                created_at=job_result.created_at,
+                estimated_completion=estimated_completion
+            )
+            
+        except Exception as e:
+            logger.error(f"Transcoding job creation failed: {str(e)}")
+            raise ServiceError(f"Transcoding job creation failed: {str(e)}")
+    
+    async def get_transcoding_job_status(self, job_id: str) -> TranscodingJobStatusResponse:
+        """
+        Get the status of a transcoding job.
+        
+        Args:
+            job_id: MediaConvert job ID
+            
+        Returns:
+            TranscodingJobStatusResponse: Job status information
+        """
+        try:
+            if not self.integration_service:
+                raise ServiceError("AWS integration service not available")
+            
+            job_result = await self.integration_service.get_transcoding_job_status(job_id)
+            
+            # Calculate processing time if completed
+            processing_time = None
+            if job_result.created_at and job_result.completed_at:
+                processing_time = (job_result.completed_at - job_result.created_at).total_seconds()
+            
+            return TranscodingJobStatusResponse(
+                job_id=job_id,
+                status=job_result.status.value,
+                progress_percentage=job_result.progress_percentage,
+                input_s3_path=job_result.input_s3_path,
+                output_paths=job_result.output_paths,
+                created_at=job_result.created_at,
+                completed_at=job_result.completed_at,
+                error_message=job_result.error_message,
+                processing_time=processing_time
+            )
+            
+        except Exception as e:
+            logger.error(f"Transcoding job status retrieval failed: {str(e)}")
+            raise ServiceError(f"Transcoding job status retrieval failed: {str(e)}")
+    
+    async def list_transcoding_jobs(self, status: Optional[str] = None, 
+                                  max_results: int = 20) -> TranscodingJobListResponse:
+        """
+        List transcoding jobs.
+        
+        Args:
+            status: Optional status filter
+            max_results: Maximum number of results
+            
+        Returns:
+            TranscodingJobListResponse: List of transcoding jobs
+        """
+        try:
+            if not self.integration_service:
+                raise ServiceError("AWS integration service not available")
+            
+            job_results = await self.integration_service.list_transcoding_jobs(status, max_results)
+            
+            jobs = []
+            for job_result in job_results:
+                # Calculate processing time if completed
+                processing_time = None
+                if job_result.created_at and job_result.completed_at:
+                    processing_time = (job_result.completed_at - job_result.created_at).total_seconds()
+                
+                job_status = TranscodingJobStatusResponse(
+                    job_id=job_result.job_id,
+                    status=job_result.status.value,
+                    progress_percentage=job_result.progress_percentage,
+                    input_s3_path=job_result.input_s3_path,
+                    output_paths=job_result.output_paths,
+                    created_at=job_result.created_at,
+                    completed_at=job_result.completed_at,
+                    error_message=job_result.error_message,
+                    processing_time=processing_time
+                )
+                jobs.append(job_status)
+            
+            return TranscodingJobListResponse(
+                jobs=jobs,
+                total_count=len(jobs),
+                status_filter=status
+            )
+            
+        except Exception as e:
+            logger.error(f"Transcoding job listing failed: {str(e)}")
+            raise ServiceError(f"Transcoding job listing failed: {str(e)}")
+    
+    async def cancel_transcoding_job(self, request: TranscodingJobCancelRequest) -> TranscodingJobCancelResponse:
+        """
+        Cancel a transcoding job.
+        
+        Args:
+            request: Job cancellation request
+            
+        Returns:
+            TranscodingJobCancelResponse: Cancellation result
+        """
+        try:
+            if not self.integration_service:
+                raise ServiceError("AWS integration service not available")
+            
+            # Get current status before cancellation
+            job_result = await self.integration_service.get_transcoding_job_status(request.job_id)
+            
+            # Attempt cancellation
+            canceled = await self.integration_service.cancel_transcoding_job(request.job_id)
+            
+            # Get updated status
+            updated_result = await self.integration_service.get_transcoding_job_status(request.job_id)
+            
+            message = "Job canceled successfully" if canceled else "Job could not be canceled (may already be complete)"
+            
+            return TranscodingJobCancelResponse(
+                job_id=request.job_id,
+                canceled=canceled,
+                status=updated_result.status.value,
+                message=message
+            )
+            
+        except Exception as e:
+            logger.error(f"Transcoding job cancellation failed: {str(e)}")
+            raise ServiceError(f"Transcoding job cancellation failed: {str(e)}")
+    
+    async def upload_video_with_transcoding(self, request: IntegratedTranscodingUploadRequest) -> IntegratedTranscodingUploadResponse:
+        """
+        Upload video and trigger transcoding in a single operation.
+        
+        Args:
+            request: Integrated transcoding upload request
+            
+        Returns:
+            IntegratedTranscodingUploadResponse: Upload and transcoding results
+        """
+        start_time = time.time()
+        
+        try:
+            if not self.integration_service:
+                raise ServiceError("AWS integration service not available")
+            
+            # Create video chunks for upload
+            from app.core.aws.s3_video_upload import VideoChunk
+            
+            chunk = VideoChunk(
+                file_path=request.video_file_path,
+                project_id=request.project_id,
+                video_id=request.video_id,
+                scene_number=0,  # Combined video
+                version=request.version,
+                metadata=request.metadata
+            )
+            
+            # Prepare video metadata
+            video_metadata = {
+                'title': request.title,
+                'description': request.description,
+                'version': request.version,
+                'status': 'uploading',
+                **(request.metadata or {})
+            }
+            
+            # Convert string formats to enums
+            from app.core.aws.mediaconvert_service import OutputFormat, QualityLevel
+            
+            output_formats = []
+            for fmt in request.output_formats:
+                try:
+                    output_formats.append(OutputFormat(fmt.upper()))
+                except ValueError:
+                    logger.warning(f"Unknown output format: {fmt}")
+            
+            quality_levels = []
+            for qual in request.quality_levels:
+                try:
+                    quality_levels.append(QualityLevel(qual.lower()))
+                except ValueError:
+                    logger.warning(f"Unknown quality level: {qual}")
+            
+            # Upload video with transcoding
+            result = await self.integration_service.upload_video_with_transcoding(
+                chunks=[chunk],
+                video_metadata=video_metadata,
+                output_formats=output_formats,
+                quality_levels=quality_levels,
+                wait_for_completion=request.wait_for_transcoding
+            )
+            
+            # Upload code if provided
+            code_url = None
+            if request.code_content:
+                from app.core.aws.s3_code_storage import CodeMetadata
+                
+                code_metadata = CodeMetadata(
+                    video_id=request.video_id,
+                    project_id=request.project_id,
+                    version=request.version,
+                    created_at=datetime.utcnow(),
+                    metadata=request.metadata
+                )
+                
+                code_url = await self.integration_service.upload_code(
+                    request.code_content, code_metadata
+                )
+            
+            # Get CDN URLs if enabled
+            cdn_urls = {}
+            if request.enable_cdn and result.get('cloudfront_urls'):
+                cdn_urls = result['cloudfront_urls']
+            
+            # Extract transcoding information
+            transcoding_job_id = result.get('transcoding_job_id')
+            transcoding_status = None
+            transcoded_outputs = None
+            
+            if result.get('transcoding_result'):
+                transcoding_status = result['transcoding_result'].status.value
+                transcoded_outputs = result['transcoding_result'].output_paths
+            
+            # Determine overall status
+            overall_status = 'uploaded'
+            if transcoding_job_id:
+                if transcoding_status == 'COMPLETE':
+                    overall_status = 'transcoded'
+                elif transcoding_status in ['SUBMITTED', 'PROGRESSING']:
+                    overall_status = 'transcoding'
+                elif transcoding_status == 'ERROR':
+                    overall_status = 'transcoding_failed'
+            
+            processing_time = time.time() - start_time
+            
+            # Create processing summary
+            processing_summary = {
+                'upload_successful': result['successful_uploads'] > 0,
+                'transcoding_enabled': result.get('transcoding_enabled', False),
+                'transcoding_started': transcoding_job_id is not None,
+                'cdn_enabled': request.enable_cdn,
+                'code_uploaded': code_url is not None,
+                'processing_time_seconds': processing_time,
+                'total_files_uploaded': result.get('total_uploads', 0),
+                'successful_uploads': result.get('successful_uploads', 0)
+            }
+            
+            return IntegratedTranscodingUploadResponse(
+                video_id=request.video_id,
+                project_id=request.project_id,
+                video_url=result['s3_paths'].get('combined', '') if result.get('s3_paths') else '',
+                code_url=code_url,
+                transcoding_job_id=transcoding_job_id,
+                transcoding_status=transcoding_status,
+                transcoded_outputs=transcoded_outputs,
+                cdn_urls=cdn_urls,
+                upload_time=datetime.utcnow(),
+                status=overall_status,
+                processing_summary=processing_summary
+            )
+            
+        except Exception as e:
+            logger.error(f"Integrated transcoding upload failed: {str(e)}")
+            raise ServiceError(f"Integrated transcoding upload failed: {str(e)}")
+    
+    async def get_mediaconvert_health(self) -> MediaConvertHealthResponse:
+        """
+        Get MediaConvert service health status.
+        
+        Returns:
+            MediaConvertHealthResponse: Health status information
+        """
+        try:
+            if not self.integration_service or not self.integration_service.mediaconvert_service:
+                return MediaConvertHealthResponse(
+                    status='disabled',
+                    region=self.config.region,
+                    enabled=False,
+                    timestamp=datetime.utcnow()
+                )
+            
+            health_info = await self.integration_service.mediaconvert_service.health_check()
+            
+            return MediaConvertHealthResponse(
+                status=health_info['status'],
+                endpoint=health_info.get('endpoint'),
+                region=health_info['region'],
+                role_arn=health_info.get('role_arn'),
+                enabled=True,
+                timestamp=datetime.fromisoformat(health_info['timestamp']),
+                error=health_info.get('error')
+            )
+            
+        except Exception as e:
+            logger.error(f"MediaConvert health check failed: {str(e)}")
+            return MediaConvertHealthResponse(
+                status='unhealthy',
+                region=self.config.region,
+                enabled=True,
+                timestamp=datetime.utcnow(),
+                error=str(e)
+            )
     
     # Health and Status
     

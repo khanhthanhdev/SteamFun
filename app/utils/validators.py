@@ -410,3 +410,71 @@ def validate_and_raise(data: Dict[str, Any], validators: Dict[str, List[Validato
             message="Validation failed",
             details={"errors": result.errors}
         )
+
+
+# Video-specific validation functions
+def validate_video_topic(topic: str) -> ValidationResult:
+    """Validate video topic."""
+    validators = [
+        RequiredValidator("topic"),
+        StringValidator("topic", min_length=1, max_length=500)
+    ]
+    
+    result = ValidationResult(True)
+    for validator in validators:
+        validator_result = validator.validate(topic)
+        if not validator_result.is_valid:
+            result.errors.extend(validator_result.errors)
+            result.is_valid = False
+    
+    return result
+
+
+def validate_video_description(description: str) -> ValidationResult:
+    """Validate video description."""
+    validators = [
+        RequiredValidator("description"),
+        StringValidator("description", min_length=1, max_length=2000)
+    ]
+    
+    result = ValidationResult(True)
+    for validator in validators:
+        validator_result = validator.validate(description)
+        if not validator_result.is_valid:
+            result.errors.extend(validator_result.errors)
+            result.is_valid = False
+    
+    return result
+
+
+def validate_video_id(video_id: str) -> ValidationResult:
+    """Validate video ID."""
+    validators = [
+        RequiredValidator("video_id"),
+        StringValidator("video_id", min_length=1, max_length=100)
+    ]
+    
+    result = ValidationResult(True)
+    for validator in validators:
+        validator_result = validator.validate(video_id)
+        if not validator_result.is_valid:
+            result.errors.extend(validator_result.errors)
+            result.is_valid = False
+    
+    return result
+
+
+def validate_project_id(project_id: str) -> ValidationResult:
+    """Validate project ID."""
+    validators = [
+        StringValidator("project_id", min_length=1, max_length=100)
+    ]
+    
+    result = ValidationResult(True)
+    for validator in validators:
+        validator_result = validator.validate(project_id)
+        if not validator_result.is_valid:
+            result.errors.extend(validator_result.errors)
+            result.is_valid = False
+    
+    return result
