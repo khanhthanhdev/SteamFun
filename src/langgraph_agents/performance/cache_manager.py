@@ -21,6 +21,14 @@ from collections import OrderedDict
 import os
 from pathlib import Path
 
+# Optional Redis support
+try:
+    import redis.asyncio as redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    redis = None
+    REDIS_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar('T')
@@ -95,7 +103,9 @@ class CacheManager(Generic[K, T]):
         persistence_path: Optional[str] = None,
         enable_compression: bool = False,
         enable_metrics: bool = True,
-        warmup_enabled: bool = False
+        warmup_enabled: bool = False,
+        redis_url: Optional[str] = None,
+        use_redis: bool = False
     ):
         """Initialize the cache manager.
         
@@ -110,6 +120,8 @@ class CacheManager(Generic[K, T]):
             enable_compression: Enable value compression
             enable_metrics: Enable performance metrics
             warmup_enabled: Enable cache warming
+            redis_url: Redis connection URL (e.g., redis://localhost:6379)
+            use_redis: Whether to use Redis as the backend
         """
         self.name = name
         self.max_size = max_size
@@ -120,11 +132,16 @@ class CacheManager(Generic[K, T]):
         self.enable_compression = enable_compression
         self.enable_metrics = enable_metrics
         self.warmup_enabled = warmup_enabled
+        self.use_redis = use_redis and REDIS_AVAILABLE
+        self.redis_url = redis_url
         
         # Storage
         self._cache: Dict[str, CacheEntry[T]] = {}
         self._access_order: OrderedDict = OrderedDict()  # For LRU
         self._access_frequency: Dict[str, int] = {}  # For LFU
+        
+        # Redis client
+        self._redis_client: Optional[redis.Redis] = None
         
         # Persistence
         self.persistence_path = Path(persistence_path or f"cache_{name}.pkl")
@@ -155,8 +172,23 @@ class CacheManager(Generic[K, T]):
             if self._cleanup_task is not None:
                 return  # Already started
             
+            # Initialize Redis client if enabled
+            if self.use_redis:
+                try:
+                    self._redis_client = redis.from_url(
+                        self.redis_url or "redis://localhost:6379",
+                        decode_responses=False  # We handle our own serialization
+                    )
+                    # Test connection
+                    await self._redis_client.ping()
+                    logger.info(f"Redis connection established for cache {self.name}")
+                except Exception as e:
+                    logger.warning(f"Failed to connect to Redis for cache {self.name}: {e}")
+                    self.use_redis = False
+                    self._redis_client = None
+            
             # Load from persistence if enabled
-            if self.enable_persistence:
+            if self.enable_persistence and not self.use_redis:
                 await self._load_from_persistence()
             
             # Start background tasks
@@ -185,9 +217,18 @@ class CacheManager(Generic[K, T]):
                     except asyncio.CancelledError:
                         pass
             
-            # Save to persistence if enabled
-            if self.enable_persistence:
+            # Save to persistence if enabled (not needed for Redis)
+            if self.enable_persistence and not self.use_redis:
                 await self._save_to_persistence()
+            
+            # Close Redis connection
+            if self._redis_client:
+                try:
+                    await self._redis_client.aclose()
+                except Exception as e:
+                    logger.warning(f"Error closing Redis connection for cache {self.name}: {e}")
+                finally:
+                    self._redis_client = None
             
             logger.info(f"Cache manager stopped: {self.name}")
     
@@ -205,6 +246,55 @@ class CacheManager(Generic[K, T]):
         start_time = time.time()
         key_str = self._serialize_key(key)
         
+        # Try Redis first if enabled
+        if self.use_redis and self._redis_client:
+            try:
+                redis_key = f"{self.name}:{key_str}"
+                cached_data = await self._redis_client.get(redis_key)
+                
+                if cached_data:
+                    entry_data = pickle.loads(cached_data)
+                    
+                    # Check if expired
+                    created_at = datetime.fromisoformat(entry_data['created_at'])
+                    ttl_seconds = entry_data.get('ttl_seconds')
+                    
+                    if ttl_seconds and (datetime.now() - created_at).total_seconds() > ttl_seconds:
+                        await self._redis_client.delete(redis_key)
+                        self.stats.misses += 1
+                        self.stats.evictions += 1
+                        return default
+                    
+                    # Update access metadata in Redis
+                    entry_data['last_accessed'] = datetime.now().isoformat()
+                    entry_data['access_count'] = entry_data.get('access_count', 0) + 1
+                    
+                    # Update Redis entry
+                    await self._redis_client.set(
+                        redis_key, 
+                        pickle.dumps(entry_data),
+                        ex=ttl_seconds
+                    )
+                    
+                    self.stats.hits += 1
+                    
+                    # Record access time
+                    if self.enable_metrics:
+                        access_time = (time.time() - start_time) * 1000  # ms
+                        self._access_times.append(access_time)
+                        if len(self._access_times) > 1000:
+                            self._access_times.pop(0)
+                    
+                    return entry_data['value']
+                else:
+                    self.stats.misses += 1
+                    return default
+                    
+            except Exception as e:
+                logger.warning(f"Redis get error for cache {self.name}: {e}")
+                # Fall back to local cache
+        
+        # Local cache logic
         with self._lock:
             entry = self._cache.get(key_str)
             
@@ -268,6 +358,37 @@ class CacheManager(Generic[K, T]):
         # Calculate size
         size_bytes = self._calculate_size(value)
         
+        # Try Redis first if enabled
+        if self.use_redis and self._redis_client:
+            try:
+                redis_key = f"{self.name}:{key_str}"
+                entry_data = {
+                    'value': value,
+                    'created_at': datetime.now().isoformat(),
+                    'last_accessed': datetime.now().isoformat(),
+                    'access_count': 0,
+                    'ttl_seconds': ttl,
+                    'tags': tags
+                }
+                
+                # Set in Redis with TTL
+                await self._redis_client.set(
+                    redis_key,
+                    pickle.dumps(entry_data),
+                    ex=ttl
+                )
+                
+                # Update local stats
+                self.stats.entry_count += 1
+                self.stats.size_bytes += size_bytes
+                
+                return True
+                
+            except Exception as e:
+                logger.warning(f"Redis set error for cache {self.name}: {e}")
+                # Fall back to local cache
+        
+        # Local cache logic
         with self._lock:
             # Check if we need to evict entries
             await self._ensure_capacity(size_bytes)
@@ -313,7 +434,22 @@ class CacheManager(Generic[K, T]):
         """
         
         key_str = self._serialize_key(key)
+        deleted = False
         
+        # Try Redis first if enabled
+        if self.use_redis and self._redis_client:
+            try:
+                redis_key = f"{self.name}:{key_str}"
+                result = await self._redis_client.delete(redis_key)
+                deleted = result > 0
+                
+                if deleted:
+                    self.stats.entry_count = max(0, self.stats.entry_count - 1)
+                
+            except Exception as e:
+                logger.warning(f"Redis delete error for cache {self.name}: {e}")
+        
+        # Local cache logic
         with self._lock:
             entry = self._cache.pop(key_str, None)
             if entry:
@@ -321,9 +457,9 @@ class CacheManager(Generic[K, T]):
                 self.stats.entry_count = len(self._cache)
                 self._access_order.pop(key_str, None)
                 self._access_frequency.pop(key_str, None)
-                return True
+                deleted = True
             
-            return False
+            return deleted
     
     async def clear(self, tags: Optional[List[str]] = None):
         """Clear the cache or entries with specific tags.
@@ -332,6 +468,44 @@ class CacheManager(Generic[K, T]):
             tags: If provided, only clear entries with these tags
         """
         
+        # Try Redis first if enabled
+        if self.use_redis and self._redis_client:
+            try:
+                if tags is None:
+                    # Clear all entries for this cache
+                    pattern = f"{self.name}:*"
+                    keys = await self._redis_client.keys(pattern)
+                    if keys:
+                        await self._redis_client.delete(*keys)
+                else:
+                    # Clear entries with specific tags (need to scan all keys)
+                    pattern = f"{self.name}:*"
+                    keys = await self._redis_client.keys(pattern)
+                    keys_to_delete = []
+                    
+                    for key in keys:
+                        try:
+                            cached_data = await self._redis_client.get(key)
+                            if cached_data:
+                                entry_data = pickle.loads(cached_data)
+                                entry_tags = entry_data.get('tags', [])
+                                if any(tag in entry_tags for tag in tags):
+                                    keys_to_delete.append(key)
+                        except Exception:
+                            continue
+                    
+                    if keys_to_delete:
+                        await self._redis_client.delete(*keys_to_delete)
+                
+                # Reset stats for Redis
+                if tags is None:
+                    self.stats.size_bytes = 0
+                    self.stats.entry_count = 0
+                
+            except Exception as e:
+                logger.warning(f"Redis clear error for cache {self.name}: {e}")
+        
+        # Local cache logic
         with self._lock:
             if tags is None:
                 # Clear all
@@ -742,5 +916,98 @@ class CacheManager(Generic[K, T]):
             'enable_metrics': self.enable_metrics,
             'warmup_enabled': self.warmup_enabled,
             'warmup_functions': len(self._warmup_functions),
+            'use_redis': self.use_redis,
+            'redis_url': self.redis_url,
+            'redis_connected': self._redis_client is not None,
             'is_running': self._cleanup_task is not None and not self._cleanup_task.done()
+        }
+    
+    def generate_cache_key(self, *args, **kwargs) -> str:
+        """Generate a cache key from arguments.
+        
+        Args:
+            *args: Positional arguments
+            **kwargs: Keyword arguments
+            
+        Returns:
+            Generated cache key
+        """
+        # Create a deterministic key from arguments
+        key_parts = []
+        
+        # Add positional arguments
+        for arg in args:
+            if isinstance(arg, (str, int, float, bool)):
+                key_parts.append(str(arg))
+            else:
+                key_parts.append(hashlib.md5(str(arg).encode()).hexdigest()[:8])
+        
+        # Add keyword arguments (sorted for consistency)
+        for k, v in sorted(kwargs.items()):
+            if isinstance(v, (str, int, float, bool)):
+                key_parts.append(f"{k}={v}")
+            else:
+                key_parts.append(f"{k}={hashlib.md5(str(v).encode()).hexdigest()[:8]}")
+        
+        return ":".join(key_parts)
+    
+    async def invalidate_pattern(self, pattern: str):
+        """Invalidate cache entries matching a pattern.
+        
+        Args:
+            pattern: Pattern to match (supports * wildcards)
+        """
+        if self.use_redis and self._redis_client:
+            try:
+                # Redis pattern matching
+                redis_pattern = f"{self.name}:{pattern}"
+                keys = await self._redis_client.keys(redis_pattern)
+                if keys:
+                    await self._redis_client.delete(*keys)
+                    logger.debug(f"Invalidated {len(keys)} Redis keys matching pattern: {pattern}")
+            except Exception as e:
+                logger.warning(f"Redis pattern invalidation error for cache {self.name}: {e}")
+        
+        # Local cache pattern matching
+        with self._lock:
+            import fnmatch
+            keys_to_remove = []
+            
+            for key_str in self._cache.keys():
+                if fnmatch.fnmatch(key_str, pattern):
+                    keys_to_remove.append(key_str)
+            
+            for key_str in keys_to_remove:
+                entry = self._cache.pop(key_str)
+                self.stats.size_bytes -= entry.size_bytes
+                self._access_order.pop(key_str, None)
+                self._access_frequency.pop(key_str, None)
+            
+            self.stats.entry_count = len(self._cache)
+            
+            if keys_to_remove:
+                logger.debug(f"Invalidated {len(keys_to_remove)} local keys matching pattern: {pattern}")
+    
+    async def get_cache_size(self) -> Dict[str, int]:
+        """Get cache size information.
+        
+        Returns:
+            Dictionary with size information
+        """
+        local_size = len(self._cache)
+        redis_size = 0
+        
+        if self.use_redis and self._redis_client:
+            try:
+                pattern = f"{self.name}:*"
+                keys = await self._redis_client.keys(pattern)
+                redis_size = len(keys)
+            except Exception as e:
+                logger.warning(f"Redis size check error for cache {self.name}: {e}")
+        
+        return {
+            'local_entries': local_size,
+            'redis_entries': redis_size,
+            'total_entries': local_size + redis_size,
+            'memory_bytes': self.stats.size_bytes
         }
