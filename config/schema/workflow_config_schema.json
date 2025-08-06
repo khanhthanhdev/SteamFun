@@ -1,0 +1,583 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LangGraph Video Generation Workflow Configuration",
+  "description": "Configuration schema for the refactored LangGraph video generation workflow",
+  "type": "object",
+  "properties": {
+    "workflow": {
+      "type": "object",
+      "description": "Core workflow configuration",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Workflow name identifier",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "version": {
+          "type": "string",
+          "description": "Configuration version",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "environment": {
+          "type": "string",
+          "enum": ["development", "staging", "production"],
+          "description": "Deployment environment"
+        }
+      },
+      "required": ["name", "version", "environment"],
+      "additionalProperties": false
+    },
+    "models": {
+      "type": "object",
+      "description": "Model configurations for different workflow steps",
+      "properties": {
+        "planner_model": {
+          "$ref": "#/definitions/ModelConfig"
+        },
+        "code_model": {
+          "$ref": "#/definitions/ModelConfig"
+        },
+        "helper_model": {
+          "$ref": "#/definitions/ModelConfig"
+        }
+      },
+      "required": ["planner_model", "code_model"],
+      "additionalProperties": false
+    },
+    "rag": {
+      "$ref": "#/definitions/RAGConfig"
+    },
+    "features": {
+      "type": "object",
+      "description": "Feature flags for workflow capabilities",
+      "properties": {
+        "use_rag": {
+          "type": "boolean",
+          "description": "Enable RAG for enhanced generation",
+          "default": true
+        },
+        "use_visual_analysis": {
+          "type": "boolean",
+          "description": "Enable visual analysis for error detection",
+          "default": false
+        },
+        "enable_caching": {
+          "type": "boolean",
+          "description": "Enable result caching",
+          "default": true
+        },
+        "use_context_learning": {
+          "type": "boolean",
+          "description": "Enable context learning",
+          "default": true
+        },
+        "use_gpu_acceleration": {
+          "type": "boolean",
+          "description": "Enable GPU acceleration for rendering",
+          "default": false
+        },
+        "preview_mode": {
+          "type": "boolean",
+          "description": "Enable preview mode (faster, lower quality)",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "performance": {
+      "type": "object",
+      "description": "Performance and concurrency settings",
+      "properties": {
+        "max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Maximum retries per operation",
+          "default": 3
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600,
+          "description": "Operation timeout in seconds",
+          "default": 300
+        },
+        "max_concurrent_scenes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Maximum concurrent scene processing",
+          "default": 5
+        },
+        "max_concurrent_renders": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Maximum concurrent video renders",
+          "default": 4
+        },
+        "circuit_breaker": {
+          "$ref": "#/definitions/CircuitBreakerConfig"
+        }
+      },
+      "additionalProperties": false
+    },
+    "quality": {
+      "type": "object",
+      "description": "Video quality and rendering settings",
+      "properties": {
+        "default_quality": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "ultra"],
+          "description": "Default video quality",
+          "default": "medium"
+        },
+        "resolution": {
+          "type": "object",
+          "properties": {
+            "width": {
+              "type": "integer",
+              "minimum": 480,
+              "maximum": 3840
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 360,
+              "maximum": 2160
+            }
+          },
+          "required": ["width", "height"]
+        },
+        "frame_rate": {
+          "type": "integer",
+          "minimum": 15,
+          "maximum": 60,
+          "description": "Video frame rate",
+          "default": 30
+        }
+      },
+      "additionalProperties": false
+    },
+    "paths": {
+      "type": "object",
+      "description": "Directory and file path configurations",
+      "properties": {
+        "output_dir": {
+          "type": "string",
+          "description": "Output directory for generated videos",
+          "default": "output"
+        },
+        "context_learning_path": {
+          "type": "string",
+          "description": "Path to context learning data",
+          "default": "data/context_learning"
+        },
+        "manim_docs_path": {
+          "type": "string",
+          "description": "Path to Manim documentation",
+          "default": "data/rag/manim_docs"
+        },
+        "chroma_db_path": {
+          "type": "string",
+          "description": "Path to ChromaDB vector store",
+          "default": "data/rag/chroma_db"
+        }
+      },
+      "additionalProperties": false
+    },
+    "monitoring": {
+      "$ref": "#/definitions/MonitoringConfig"
+    },
+    "security": {
+      "$ref": "#/definitions/SecurityConfig"
+    },
+    "checkpointing": {
+      "$ref": "#/definitions/CheckpointingConfig"
+    },
+    "error_handling": {
+      "$ref": "#/definitions/ErrorHandlingConfig"
+    }
+  },
+  "required": ["workflow", "models"],
+  "additionalProperties": false,
+  "definitions": {
+    "ModelConfig": {
+      "type": "object",
+      "description": "Configuration for LLM models",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["openai", "anthropic", "openrouter", "azure", "bedrock", "gemini", "cohere", "huggingface", "local"],
+          "description": "Model provider"
+        },
+        "model_name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9\\-_\\./]+$",
+          "description": "Specific model name"
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 2.0,
+          "description": "Temperature for generation",
+          "default": 0.7
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000,
+          "description": "Maximum tokens for generation",
+          "default": 4000
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300,
+          "description": "Request timeout in seconds",
+          "default": 30
+        }
+      },
+      "required": ["provider", "model_name"],
+      "additionalProperties": false
+    },
+    "RAGConfig": {
+      "type": "object",
+      "description": "RAG system configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether RAG is enabled",
+          "default": true
+        },
+        "vector_store_path": {
+          "type": "string",
+          "description": "Path to vector store",
+          "default": "data/rag/chroma_db"
+        },
+        "embedding_model": {
+          "type": "string",
+          "description": "Embedding model identifier",
+          "default": "hf:ibm-granite/granite-embedding-30m-english"
+        },
+        "chunk_size": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 10000,
+          "description": "Document chunk size",
+          "default": 1000
+        },
+        "chunk_overlap": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Chunk overlap size",
+          "default": 200
+        },
+        "similarity_threshold": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Similarity threshold for retrieval",
+          "default": 0.7
+        },
+        "max_results": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Maximum number of results to retrieve",
+          "default": 5
+        },
+        "enable_caching": {
+          "type": "boolean",
+          "description": "Whether to enable result caching",
+          "default": true
+        },
+        "cache_ttl": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Cache TTL in seconds",
+          "default": 3600
+        }
+      },
+      "additionalProperties": false
+    },
+    "CircuitBreakerConfig": {
+      "type": "object",
+      "description": "Circuit breaker configuration",
+      "properties": {
+        "failure_threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Number of failures before opening circuit",
+          "default": 5
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300,
+          "description": "Timeout before attempting to close circuit",
+          "default": 60
+        },
+        "half_open_max_calls": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Maximum calls in half-open state",
+          "default": 3
+        }
+      },
+      "additionalProperties": false
+    },
+    "MonitoringConfig": {
+      "type": "object",
+      "description": "Monitoring and observability configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether monitoring is enabled",
+          "default": true
+        },
+        "use_langfuse": {
+          "type": "boolean",
+          "description": "Whether to enable Langfuse tracing",
+          "default": true
+        },
+        "print_cost": {
+          "type": "boolean",
+          "description": "Whether to print cost information",
+          "default": true
+        },
+        "verbose": {
+          "type": "boolean",
+          "description": "Whether to enable verbose logging",
+          "default": false
+        },
+        "metrics_collection": {
+          "type": "object",
+          "properties": {
+            "step_durations": {
+              "type": "boolean",
+              "default": true
+            },
+            "success_rates": {
+              "type": "boolean",
+              "default": true
+            },
+            "resource_usage": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "health_check": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "interval_seconds": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 3600,
+              "default": 60
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SecurityConfig": {
+      "type": "object",
+      "description": "Security configuration",
+      "properties": {
+        "input_validation": {
+          "type": "object",
+          "properties": {
+            "max_topic_length": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 500,
+              "default": 200
+            },
+            "max_description_length": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 5000,
+              "default": 2000
+            },
+            "allowed_file_extensions": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^\\.[a-zA-Z0-9]+$"
+              },
+              "default": [".mp4", ".avi", ".mov", ".mkv"]
+            }
+          }
+        },
+        "api_keys": {
+          "type": "object",
+          "properties": {
+            "encryption_enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "rotation_interval_days": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365,
+              "default": 90
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "CheckpointingConfig": {
+      "type": "object",
+      "description": "Workflow checkpointing configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether checkpointing is enabled",
+          "default": true
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["memory", "postgres", "redis"],
+          "description": "Checkpointing provider",
+          "default": "memory"
+        },
+        "postgres": {
+          "type": "object",
+          "properties": {
+            "connection_string": {
+              "type": "string",
+              "description": "PostgreSQL connection string"
+            },
+            "table_name": {
+              "type": "string",
+              "default": "checkpoints"
+            }
+          }
+        },
+        "redis": {
+          "type": "object",
+          "properties": {
+            "host": {
+              "type": "string",
+              "default": "localhost"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535,
+              "default": 6379
+            },
+            "db": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 15,
+              "default": 0
+            }
+          }
+        },
+        "cleanup": {
+          "type": "object",
+          "properties": {
+            "max_age_hours": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8760,
+              "default": 168
+            },
+            "max_count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1000
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ErrorHandlingConfig": {
+      "type": "object",
+      "description": "Error handling and recovery configuration",
+      "properties": {
+        "strategies": {
+          "type": "object",
+          "properties": {
+            "retry": {
+              "type": "object",
+              "properties": {
+                "max_attempts": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10,
+                  "default": 3
+                },
+                "backoff_factor": {
+                  "type": "number",
+                  "minimum": 1.0,
+                  "maximum": 10.0,
+                  "default": 2.0
+                },
+                "max_delay": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 300,
+                  "default": 60
+                }
+              }
+            },
+            "fallback_models": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of fallback models to try"
+            },
+            "human_loop": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "timeout_seconds": {
+                  "type": "integer",
+                  "minimum": 30,
+                  "maximum": 3600,
+                  "default": 300
+                }
+              }
+            }
+          }
+        },
+        "escalation": {
+          "type": "object",
+          "properties": {
+            "max_automatic_retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "default": 3
+            },
+            "escalate_after_minutes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60,
+              "default": 10
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

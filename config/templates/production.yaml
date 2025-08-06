@@ -1,0 +1,120 @@
+# Production Configuration Template
+# This template provides a complete configuration for production environment
+
+workflow:
+  name: "video-generation-prod"
+  version: "1.0.0"
+  environment: "production"
+
+models:
+  planner_model:
+    provider: "openrouter"
+    model_name: "anthropic/claude-3.5-sonnet"
+    temperature: 0.7
+    max_tokens: 4000
+    timeout: 90
+  
+  code_model:
+    provider: "openrouter"
+    model_name: "anthropic/claude-3.5-sonnet"
+    temperature: 0.3
+    max_tokens: 8000
+    timeout: 180
+  
+  helper_model:
+    provider: "openrouter"
+    model_name: "anthropic/claude-3-haiku"
+    temperature: 0.7
+    max_tokens: 4000
+    timeout: 60
+
+rag:
+  enabled: true
+  vector_store_path: "data/rag/chroma_db"
+  embedding_model: "hf:ibm-granite/granite-embedding-30m-english"
+  chunk_size: 1000
+  chunk_overlap: 200
+  similarity_threshold: 0.7
+  max_results: 8
+  enable_caching: true
+  cache_ttl: 3600  # 1 hour
+
+features:
+  use_rag: true
+  use_visual_analysis: true
+  enable_caching: true
+  use_context_learning: true
+  use_gpu_acceleration: true  # Enable for production performance
+  preview_mode: false
+
+performance:
+  max_retries: 3
+  timeout_seconds: 300
+  max_concurrent_scenes: 8  # Higher concurrency for production
+  max_concurrent_renders: 6
+  circuit_breaker:
+    failure_threshold: 5
+    timeout: 60
+    half_open_max_calls: 3
+
+quality:
+  default_quality: "high"
+  resolution:
+    width: 1920
+    height: 1080
+  frame_rate: 30
+
+paths:
+  output_dir: "/var/app/output"
+  context_learning_path: "/var/app/data/context_learning"
+  manim_docs_path: "/var/app/data/rag/manim_docs"
+  chroma_db_path: "/var/app/data/rag/chroma_db"
+
+monitoring:
+  enabled: true
+  use_langfuse: true
+  print_cost: false  # Disable cost printing in production logs
+  verbose: false
+  metrics_collection:
+    step_durations: true
+    success_rates: true
+    resource_usage: true
+  health_check:
+    enabled: true
+    interval_seconds: 60
+
+security:
+  input_validation:
+    max_topic_length: 200
+    max_description_length: 2000
+    allowed_file_extensions: [".mp4", ".avi", ".mov", ".mkv"]
+  api_keys:
+    encryption_enabled: true
+    rotation_interval_days: 90
+
+checkpointing:
+  enabled: true
+  provider: "postgres"
+  postgres:
+    connection_string: "${DATABASE_URL}"
+    table_name: "workflow_checkpoints"
+  cleanup:
+    max_age_hours: 168  # 1 week
+    max_count: 10000
+
+error_handling:
+  strategies:
+    retry:
+      max_attempts: 3
+      backoff_factor: 2.0
+      max_delay: 60
+    fallback_models:
+      - "openrouter/anthropic/claude-3-haiku"
+      - "openrouter/openai/gpt-4o-mini"
+      - "openrouter/openai/gpt-3.5-turbo"
+    human_loop:
+      enabled: false  # Disable human loop in production
+      timeout_seconds: 300
+  escalation:
+    max_automatic_retries: 3
+    escalate_after_minutes: 10

@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for FastAPI application
+# Multi-stage Dockerfile for LangGraph video generation workflow
 FROM python:3.12-slim as base
 
 # Set working directory
@@ -15,7 +15,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     HF_HUB_CACHE=/app/.cache/huggingface/hub \
     TRANSFORMERS_CACHE=/app/.cache/transformers \
     SENTENCE_TRANSFORMERS_HOME=/app/.cache/sentence_transformers \
-    PATH="/root/.TinyTeX/bin/x86_64-linux:$PATH"
+    PATH="/root/.TinyTeX/bin/x86_64-linux:$PATH" \
+    WORKFLOW_CONFIG_PATH=/app/config/workflow.yaml \
+    LANGGRAPH_CHECKPOINTER=postgres
 
 # Install system dependencies in single layer
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -37,6 +39,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     dvisvgm \
     ghostscript \
     ca-certificates \
+    postgresql-client \
+    redis-tools \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 
@@ -47,6 +51,9 @@ RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://
     && pip install --no-cache-dir -e . \
     && python -c "import fastapi; print(f'FastAPI version: {fastapi.__version__}')" \
     && python -c "import gradio; print(f'Gradio version: {gradio.__version__}')" \
+    && python -c "import langgraph; print(f'LangGraph version: {langgraph.__version__}')" \
+    && python -c "import psycopg2; print(f'Psycopg2 version: {psycopg2.__version__}')" \
+    && python -c "import redis; print(f'Redis version: {redis.__version__}')" \
     && find /usr/local -name "*.pyc" -delete \
     && find /usr/local -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
@@ -68,6 +75,7 @@ COPY app/ ./app/
 COPY src/ ./src/
 COPY scripts/ ./scripts/
 COPY data/ ./data/
+COPY config/ ./config/
 COPY .env.example ./
 COPY gradio_app.py ./
 
@@ -102,13 +110,33 @@ LABEL app.name="Video Generation Agents" \
 # Expose ports for FastAPI and Gradio
 EXPOSE 8000 7860
 
-# Health check for FastAPI
+# Health check for FastAPI with workflow health endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=2 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8000/health/workflow || curl -f http://localhost:8000/health || exit 1
 
-# Default command runs FastAPI server
+# Development stage (default)
+FROM base as development
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+# Production stage
+FROM base as production
+
+# Install production dependencies
+RUN pip install --no-cache-dir gunicorn uvicorn[standard] prometheus-client
+
+# Copy production configuration
+COPY config/templates/production.yaml ./config/workflow.yaml
+
+# Set production environment variables
+ENV FASTAPI_ENV=production \
+    WORKERS=4 \
+    WORKFLOW_CONFIG_PATH=/app/config/workflow.yaml \
+    LANGGRAPH_CHECKPOINTER=postgres \
+    ENABLE_MONITORING=true
+
+# Production command with gunicorn
+CMD ["gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--access-logfile", "-", "--error-logfile", "-"]
 
 # Alternative commands for different modes:
 # For Gradio UI: CMD ["python", "gradio_app.py"]
-# For production: CMD ["gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
+# For development: CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

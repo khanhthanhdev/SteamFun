@@ -1,0 +1,119 @@
+# Staging Configuration Template
+# This template provides a complete configuration for staging environment
+
+workflow:
+  name: "video-generation-staging"
+  version: "1.0.0"
+  environment: "staging"
+
+models:
+  planner_model:
+    provider: "openrouter"
+    model_name: "anthropic/claude-3.5-sonnet"
+    temperature: 0.7
+    max_tokens: 4000
+    timeout: 75
+  
+  code_model:
+    provider: "openrouter"
+    model_name: "anthropic/claude-3.5-sonnet"
+    temperature: 0.3
+    max_tokens: 8000
+    timeout: 150
+  
+  helper_model:
+    provider: "openrouter"
+    model_name: "anthropic/claude-3-haiku"
+    temperature: 0.7
+    max_tokens: 4000
+    timeout: 45
+
+rag:
+  enabled: true
+  vector_store_path: "data/rag/chroma_db"
+  embedding_model: "hf:ibm-granite/granite-embedding-30m-english"
+  chunk_size: 1000
+  chunk_overlap: 200
+  similarity_threshold: 0.7
+  max_results: 6
+  enable_caching: true
+  cache_ttl: 2700  # 45 minutes
+
+features:
+  use_rag: true
+  use_visual_analysis: true
+  enable_caching: true
+  use_context_learning: true
+  use_gpu_acceleration: false  # Disabled for staging cost control
+  preview_mode: false
+
+performance:
+  max_retries: 3
+  timeout_seconds: 240
+  max_concurrent_scenes: 5
+  max_concurrent_renders: 4
+  circuit_breaker:
+    failure_threshold: 4
+    timeout: 45
+    half_open_max_calls: 2
+
+quality:
+  default_quality: "medium"
+  resolution:
+    width: 1920
+    height: 1080
+  frame_rate: 30
+
+paths:
+  output_dir: "output/staging"
+  context_learning_path: "data/context_learning"
+  manim_docs_path: "data/rag/manim_docs"
+  chroma_db_path: "data/rag/chroma_db"
+
+monitoring:
+  enabled: true
+  use_langfuse: true
+  print_cost: true
+  verbose: false
+  metrics_collection:
+    step_durations: true
+    success_rates: true
+    resource_usage: true
+  health_check:
+    enabled: true
+    interval_seconds: 90
+
+security:
+  input_validation:
+    max_topic_length: 200
+    max_description_length: 2000
+    allowed_file_extensions: [".mp4", ".avi", ".mov", ".mkv"]
+  api_keys:
+    encryption_enabled: true
+    rotation_interval_days: 90
+
+checkpointing:
+  enabled: true
+  provider: "postgres"
+  postgres:
+    connection_string: "${STAGING_DATABASE_URL}"
+    table_name: "workflow_checkpoints"
+  cleanup:
+    max_age_hours: 72  # 3 days
+    max_count: 1000
+
+error_handling:
+  strategies:
+    retry:
+      max_attempts: 3
+      backoff_factor: 1.8
+      max_delay: 45
+    fallback_models:
+      - "openrouter/anthropic/claude-3-haiku"
+      - "openrouter/openai/gpt-4o-mini"
+    human_loop:
+      enabled: true
+      timeout_seconds: 450  # 7.5 minutes
+  escalation:
+    max_automatic_retries: 3
+    escalate_after_minutes: 8
