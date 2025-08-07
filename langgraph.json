@@ -2,7 +2,30 @@
   "dependencies": ["."],
   "graphs": {
     "video_generation_workflow": "./src/langgraph_agents/full_workflow.py:graph",
-    "simple_workflow": "./src/langgraph_agents/simple_workflow.py:graph"
+    "simple_workflow": "./src/langgraph_agents/simple_workflow.py:graph",
+    
+    "studio_workflow": "./src/langgraph_agents/studio/studio_workflow.py:graph",
+    "studio_compatible_workflow": "./src/langgraph_agents/studio/studio_workflow_config.py:graph",
+    "studio_enhanced_workflow": "./src/langgraph_agents/studio/studio_workflow_config.py:studio_compatible_workflow",
+    
+    "planning_agent_test": "./src/langgraph_agents/studio/studio_graphs.py:planning_agent_graph",
+    "code_generation_agent_test": "./src/langgraph_agents/studio/studio_graphs.py:code_generation_agent_graph",
+    "rendering_agent_test": "./src/langgraph_agents/studio/studio_graphs.py:rendering_agent_graph",
+    "error_handler_agent_test": "./src/langgraph_agents/studio/studio_graphs.py:error_handler_agent_graph",
+    
+    "planning_to_code_chain": "./src/langgraph_agents/studio/studio_graphs.py:planning_to_code_chain_graph",
+    "code_to_rendering_chain": "./src/langgraph_agents/studio/studio_graphs.py:code_to_rendering_chain_graph",
+    "full_agent_chain": "./src/langgraph_agents/studio/studio_graphs.py:full_agent_chain_graph",
+    
+    "monitored_planning": "./src/langgraph_agents/studio/studio_graphs.py:monitored_planning_graph",
+    "monitored_code_generation": "./src/langgraph_agents/studio/studio_graphs.py:monitored_code_generation_graph",
+    "monitored_rendering": "./src/langgraph_agents/studio/studio_graphs.py:monitored_rendering_graph",
+    "monitored_error_handler": "./src/langgraph_agents/studio/studio_graphs.py:monitored_error_handler_graph",
+    
+    "workflow_test_graph": "./src/langgraph_agents/studio/studio_graphs.py:workflow_test_graph",
+    "state_validation_graph": "./src/langgraph_agents/studio/studio_graphs.py:state_validation_graph",
+    "checkpoint_inspection_graph": "./src/langgraph_agents/studio/studio_graphs.py:checkpoint_inspection_graph",
+    "transition_testing_graph": "./src/langgraph_agents/studio/studio_graphs.py:transition_testing_graph"
   },
   "env": ".env",
   "python_version": "3.11",

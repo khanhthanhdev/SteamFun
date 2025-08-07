@@ -1,0 +1,4 @@
+# Requirements for test UI client
+aiohttp>=3.8.0
+gradio>=4.0.0
+pydantic>=2.0.0

@@ -5,7 +5,7 @@ Combines all endpoint routers for API version 1.
 """
 
 from fastapi import APIRouter
-from .endpoints import video, rag, agents, aws
+from .endpoints import video, rag, agents, aws, testing
 
 # Create main API router
 api_router = APIRouter(prefix="/api/v1")
@@ -15,6 +15,7 @@ api_router.include_router(video.router)
 api_router.include_router(rag.router)
 api_router.include_router(agents.router)
 api_router.include_router(aws.router)
+api_router.include_router(testing.router)
 
 @api_router.get("/status")
 async def api_status():
@@ -26,6 +27,7 @@ async def api_status():
             "video": "✅ Implemented",
             "rag": "✅ Implemented", 
             "aws": "✅ Implemented",
-            "agents": "✅ Implemented"
+            "agents": "✅ Implemented",
+            "testing": "✅ Implemented"
         }
     }
