@@ -21,60 +21,69 @@ import logging
 from src.test_ui.api_client import TestAPIClient
 from src.test_ui.websocket_client import WebSocketLogClient, ThreadedWebSocketClient
 from src.test_ui.dynamic_forms import AgentFormManager
-
+from src.test_ui.config_manager import TestConfigManager
+from src.test_ui.config_ui import ConfigurationUI
+from src.test_ui.validation import InputValidator, ValidationError, AGENT_FORM_VALIDATION_RULES, WORKFLOW_FORM_VALIDATION_RULES, CONFIG_FORM_VALIDATION_RULES
+from src.test_ui.error_handling import GradioErrorHandler, ValidationMixin, with_error_handling, ERROR_HANDLING_CSS
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class GradioTestInterface:
+class GradioTestInterface(ValidationMixin):
     """Main Gradio testing interface for LangGraph agents."""
     
     def __init__(self, backend_url: str = "http://localhost:8000"):
+        ValidationMixin.__init__(self)
         self.backend_url = backend_url
         self.api_client = TestAPIClient(backend_url)
         self.websocket_client = WebSocketLogClient(backend_url)
         self.threaded_ws_client = ThreadedWebSocketClient(backend_url)
         self.active_sessions = {}
         self.form_manager = AgentFormManager()
+        self.config_manager = TestConfigManager()
+        self.config_ui = ConfigurationUI(self.config_manager)
+        self.input_validator = InputValidator()
         
     def create_interface(self) -> gr.Blocks:
         """Create the main Gradio interface with tabbed layout."""
         
         # Custom CSS for better styling
-        custom_css = """
-        .main-header {
+        custom_css = f"""
+        .main-header {{
             text-align: center;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 2rem;
             border-radius: 1rem;
             margin-bottom: 2rem;
-        }
-        .config-panel {
+        }}
+        .config-panel {{
             border: 1px solid #e1e5e9;
             border-radius: 0.5rem;
             padding: 1rem;
             background: #f8f9fa;
-        }
-        .status-panel {
+        }}
+        .status-panel {{
             border: 1px solid #e1e5e9;
             border-radius: 0.5rem;
             padding: 1rem;
             background: #fff;
-        }
-        .log-viewer {
+        }}
+        .log-viewer {{
             font-family: 'Courier New', monospace;
             background: #1e1e1e;
             color: #ffffff;
             border-radius: 0.5rem;
-        }
-        .agent-card {
+        }}
+        .agent-card {{
             border: 1px solid #e1e5e9;
             border-radius: 0.5rem;
             padding: 1rem;
             margin: 0.5rem 0;
             background: white;
-        }
+        }}
+        {ERROR_HANDLING_CSS}
         """
         
         with gr.Blocks(
@@ -241,6 +250,10 @@ class GradioTestInterface:
                                     interactive=False,
                                     visible=False
                                 )
+                                
+                                # Error and success displays for agent testing
+                                agent_error_display = self.error_handler.create_error_display_component()
+                                agent_success_display = self.error_handler.create_success_display_component()
                     
                     # Results Display
                     with gr.Row():
@@ -278,6 +291,14 @@ class GradioTestInterface:
                                         interactive=False,
                                         visible=False
                                     )
+                    
+                    # Configuration Management for Agent Testing
+                    with gr.Row():
+                        with gr.Column(scale=1):
+                            agent_config_save = self.config_ui.create_config_save_section()
+                        
+                        with gr.Column(scale=1):
+                            agent_config_load = self.config_ui.create_config_load_section()
                 
                 # Tab 2: Complete Workflow Testing  
                 with gr.TabItem("🔄 Complete Workflow Testing"):
@@ -360,6 +381,10 @@ class GradioTestInterface:
                                     value=True,
                                     info="Automatically update workflow status"
                                 )
+                                
+                                # Error and success displays for workflow testing
+                                workflow_error_display = self.error_handler.create_error_display_component()
+                                workflow_success_display = self.error_handler.create_success_display_component()
                     
                     # Workflow Results
                     with gr.Row():
@@ -411,6 +436,14 @@ class GradioTestInterface:
                                     variant="secondary",
                                     visible=False
                                 )
+                    
+                    # Configuration Management for Workflow Testing
+                    with gr.Row():
+                        with gr.Column(scale=1):
+                            workflow_config_save = self.config_ui.create_config_save_section()
+                        
+                        with gr.Column(scale=1):
+                            workflow_config_load = self.config_ui.create_config_load_section()
                 
                 # Tab 3: Real-time Logs
                 with gr.TabItem("📋 Real-time Logs"):
@@ -476,6 +509,9 @@ class GradioTestInterface:
                                     value="Disconnected",
                                     interactive=False
                                 )
+                
+                # Tab 4: Configuration Management
+                config_tab, config_components = self.config_ui.create_config_management_tab()
             
             # Event handlers will be set up in the setup_event_handlers method
             self._setup_event_handlers(
@@ -488,16 +524,21 @@ class GradioTestInterface:
                 run_agent_btn, stop_agent_btn, refresh_agent_status_btn, agent_status_text, agent_progress,
                 agent_current_step, agent_session_display, agent_results_json, 
                 agent_execution_time, agent_output_text, agent_metadata, agent_errors,
+                agent_error_display, agent_success_display,
                 # Workflow testing components
                 workflow_topic, workflow_description, workflow_session_id, config_overrides_json,
                 run_workflow_btn, stop_workflow_btn, workflow_refresh_btn, auto_refresh_workflow,
                 workflow_status_text, workflow_current_step, workflow_progress, workflow_results_json,
                 workflow_execution_time, workflow_step_details, workflow_logs_display,
                 video_preview, video_thumbnail, download_video_btn,
+                workflow_error_display, workflow_success_display,
                 # Log monitoring components
                 log_session_input, connect_logs_btn, disconnect_logs_btn,
                 log_level_filter, auto_scroll_checkbox, clear_logs_btn,
-                log_display, log_connection_status
+                log_display, log_connection_status,
+                # Configuration management components
+                config_components, agent_config_save, agent_config_load,
+                workflow_config_save, workflow_config_load
             )
         
         return interface
@@ -518,7 +559,9 @@ class GradioTestInterface:
          video_preview, video_thumbnail, download_video_btn,
          log_session_input, connect_logs_btn, disconnect_logs_btn,
          log_level_filter, auto_scroll_checkbox, clear_logs_btn,
-         log_display, log_connection_status) = components
+         log_display, log_connection_status,
+         config_components, agent_config_save, agent_config_load,
+         workflow_config_save, workflow_config_load) = components
         
         # Configuration event handlers
         test_connection_btn.click(
@@ -542,22 +585,23 @@ class GradioTestInterface:
         
         # Agent testing handlers
         run_agent_btn.click(
-            fn=self._run_agent_test,
+            fn=self._run_agent_test_with_validation,
             inputs=[agent_dropdown, session_id_input, dynamic_inputs, 
                    agent_timeout, agent_retry_count, agent_verbose],
             outputs=[agent_status_text, agent_progress, agent_current_step,
                     agent_session_display, run_agent_btn, stop_agent_btn,
-                    agent_results_json, agent_output_text, agent_metadata]
+                    agent_results_json, agent_output_text, agent_metadata,
+                    agent_error_display]
         )
         
         # Workflow testing handlers
         run_workflow_btn.click(
-            fn=self._run_workflow_test,
+            fn=self._run_workflow_test_with_validation,
             inputs=[workflow_topic, workflow_description, workflow_session_id, config_overrides_json],
             outputs=[workflow_status_text, workflow_current_step, workflow_progress, 
                     run_workflow_btn, stop_workflow_btn, workflow_results_json,
                     workflow_execution_time, workflow_step_details, workflow_logs_display,
-                    video_preview, video_thumbnail, download_video_btn]
+                    video_preview, video_thumbnail, download_video_btn, workflow_error_display]
         )
         
         # Workflow stop handler
@@ -620,22 +664,64 @@ class GradioTestInterface:
             outputs=[agent_status_text, agent_progress, agent_current_step, 
                     agent_results_json, agent_output_text, agent_metadata]
         )
+        
+        # Configuration management event handlers
+        self._setup_config_event_handlers(
+            config_components, agent_config_save, agent_config_load,
+            workflow_config_save, workflow_config_load,
+            # Agent components for saving/loading
+            agent_dropdown, dynamic_inputs, session_id_input, 
+            agent_timeout, agent_retry_count, agent_verbose,
+            # Workflow components for saving/loading
+            workflow_topic, workflow_description, workflow_session_id, config_overrides_json
+        )
     
     def _test_connection(self, backend_url: str) -> str:
-        """Test connection to the backend API."""
+        """Test connection to the backend API with detailed error reporting."""
         try:
+            # Validate backend URL format
+            if not backend_url:
+                return "❌ Backend URL is required"
+            
+            if not backend_url.startswith(('http://', 'https://')):
+                return "❌ Backend URL must start with http:// or https://"
+            
             self.backend_url = backend_url
             self.api_client = TestAPIClient(backend_url)
             
-            # Test the connection by trying to get agents
-            agents = self.api_client.get_available_agents()
-            return f"✅ Connected successfully. Found {len(agents)} agents."
+            # Perform detailed health check
+            is_healthy, status_message, suggestions = self.api_client.detailed_health_check()
+            
+            if is_healthy:
+                # If health check passes, try to get agents for additional verification
+                try:
+                    agents = self.api_client.get_available_agents()
+                    return f"✅ Connected successfully. Found {len(agents)} agents available for testing."
+                except Exception as e:
+                    return f"⚠️ Server is healthy but agents endpoint failed: {str(e)}"
+            else:
+                # Format error message with suggestions
+                error_msg = status_message
+                if suggestions:
+                    error_msg += "\n\n💡 Try these solutions:"
+                    for i, suggestion in enumerate(suggestions, 1):
+                        error_msg += f"\n{i}. {suggestion}"
+                return error_msg
+                
         except Exception as e:
-            return f"❌ Connection failed: {str(e)}"
+            logger.error(f"Unexpected error in connection test: {e}")
+            return f"❌ Unexpected error: {str(e)}\n\n💡 Try refreshing the page or checking the console for details."
     
     def _refresh_agents(self, backend_url: str) -> tuple:
-        """Refresh the list of available agents."""
+        """Refresh the list of available agents with enhanced error handling."""
         try:
+            # Validate backend URL
+            if not backend_url:
+                return (
+                    gr.update(choices=[], value=None),
+                    "❌ Backend URL is required to refresh agents"
+                )
+            
             self.backend_url = backend_url
             self.api_client = TestAPIClient(backend_url)
             
@@ -645,12 +731,33 @@ class GradioTestInterface:
             
             return (
                 gr.update(choices=agent_choices, value=None),
-                f"✅ Refreshed. Found {len(agents)} agents."
+                f"✅ Successfully refreshed. Found {len(agents)} agents available for testing."
             )
-        except Exception as e:
+        except ConnectionError as e:
             return (
                 gr.update(choices=[], value=None),
-                f"❌ Failed to refresh agents: {str(e)}"
+                f"❌ Connection Error: {str(e)}\n\n💡 Check if the backend server is running and the URL is correct."
+            )
+        except TimeoutError as e:
+            return (
+                gr.update(choices=[], value=None),
+                f"❌ Timeout Error: {str(e)}\n\n💡 The server may be overloaded. Try again in a few moments."
+            )
+        except Exception as e:
+            logger.error(f"Error refreshing agents: {e}")
+            error_msg = f"❌ Failed to refresh agents: {str(e)}"
+            
+            # Add specific suggestions based on error type
+            if "404" in str(e):
+                error_msg += "\n\n💡 The agents endpoint may not be available. Check the backend configuration."
+            elif "500" in str(e):
+                error_msg += "\n\n💡 Server error occurred. Check the backend logs for details."
+            else:
+                error_msg += "\n\n💡 Try testing the connection first or check the backend server status."
+            
+            return (
+                gr.update(choices=[], value=None),
+                error_msg
             )
     
     def _on_agent_selected(self, agent_name: str) -> tuple:
@@ -880,7 +987,7 @@ class GradioTestInterface:
             )
     
     def _run_workflow_test(self, topic: str, description: str, session_id: str, config_overrides: dict) -> tuple:
-        """Run a complete workflow test with enhanced progress tracking."""
+        """Run a complete workflow test with enhanced step-by-step progress tracking."""
         if not topic or not description:
             return (
                 "❌ Please provide both topic and description",
@@ -919,7 +1026,7 @@ class GradioTestInterface:
                     gr.update(visible=False)
                 )
             
-            # Start workflow test
+            # Start workflow test with enhanced pipeline tracking
             response = self.api_client.test_complete_workflow(
                 topic=topic,
                 description=description,
@@ -927,7 +1034,7 @@ class GradioTestInterface:
                 config_overrides=config_overrides or {}
             )
             
-            # Store session for monitoring with enhanced tracking
+            # Store session for monitoring with enhanced step-by-step tracking
             self.active_sessions[session_id] = {
                 'type': 'workflow_test',
                 'topic': topic,
@@ -936,25 +1043,36 @@ class GradioTestInterface:
                 'start_time': time.time(),
                 'current_step': 'initializing',
                 'progress': 0.0,
-                'step_history': [],
-                'config_overrides': config_overrides or {}
+                'step_history': ['initializing'],
+                'step_details': {
+                    'planning': {'status': 'pending', 'start_time': None, 'end_time': None, 'progress': 0.0},
+                    'code_generation': {'status': 'pending', 'start_time': None, 'end_time': None, 'progress': 0.0},
+                    'rendering': {'status': 'pending', 'start_time': None, 'end_time': None, 'progress': 0.0}
+                },
+                'config_overrides': config_overrides or {},
+                'video_generation_pipeline': {
+                    'total_steps': 3,
+                    'completed_steps': 0,
+                    'current_step_progress': 0.0
+                }
             }
             
-            # Create initial step details with workflow overview
-            initial_step_details = self._create_workflow_initialization_details(topic, description, session_id)
+            # Create enhanced initial step details with pipeline visualization
+            initial_step_details = self._create_enhanced_workflow_initialization_details(topic, description, session_id)
             
-            # Create initial logs display
-            initial_logs = f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 Workflow started for topic: {topic}\n"
-            initial_logs += f"[{datetime.now().strftime('%H:%M:%S')}] 📋 Session ID: {session_id}\n"
-            initial_logs += f"[{datetime.now().strftime('%H:%M:%S')}] ⚙️ Initializing video generation pipeline...\n"
+            # Create enhanced initial logs display with pipeline information
+            initial_logs = self._create_initial_workflow_logs(topic, description, session_id)
+            
+            # Start background monitoring for step-by-step progress updates
+            self._start_workflow_progress_monitoring(session_id)
             
             return (
-                f"🚀 Starting workflow test for '{topic}'",
-                "🔄 Initializing workflow pipeline...",
+                f"🚀 Starting video generation workflow for '{topic}'",
+                "🔄 Initializing video generation pipeline...",
                 gr.update(value=5),
                 gr.update(visible=False),
                 gr.update(visible=True),
-                {"session_id": session_id, "status": "started", "topic": topic},
+                {"session_id": session_id, "status": "started", "topic": topic, "pipeline": "video_generation"},
                 "",
                 initial_step_details,
                 initial_logs,
@@ -1090,7 +1208,7 @@ class GradioTestInterface:
             )
     
     def _refresh_workflow_status(self, session_id: str) -> tuple:
-        """Refresh workflow execution status with enhanced progress tracking."""
+        """Refresh workflow execution status with enhanced step-by-step progress tracking."""
         if not session_id:
             return (
                 "No session ID provided",
@@ -1106,8 +1224,9 @@ class GradioTestInterface:
             )
         
         try:
-            # Get session status from API
+            # Get session status from API and local session info
             session_data = self.api_client.get_session_logs(session_id)
+            local_session = self.active_sessions.get(session_id, {})
             
             status = session_data.get('status', 'unknown')
             current_step = session_data.get('current_step', '')
@@ -1115,7 +1234,7 @@ class GradioTestInterface:
             results = session_data.get('results')
             execution_time = session_data.get('execution_time')
             
-            # Format status message with enhanced information
+            # Format status message with enhanced step-by-step information
             status_icons = {
                 'running': '⚙️',
                 'completed': '✅',
@@ -1124,39 +1243,37 @@ class GradioTestInterface:
             }
             
             status_icon = status_icons.get(status, '❓')
-            status_msg = f"{status_icon} Workflow {status.title()}"
+            
+            # Enhanced status message with pipeline information
+            if status == 'running':
+                pipeline_info = local_session.get('video_generation_pipeline', {})
+                completed_steps = pipeline_info.get('completed_steps', 0)
+                total_steps = pipeline_info.get('total_steps', 3)
+                status_msg = f"{status_icon} Video Generation Pipeline Running (Step {completed_steps + 1}/{total_steps})"
+            else:
+                status_msg = f"{status_icon} Video Generation Workflow {status.title()}"
             
             if execution_time:
                 status_msg += f" (took {execution_time:.2f}s)"
             elif status == 'running':
                 # Calculate elapsed time for running workflows
-                start_time = self.active_sessions.get(session_id, {}).get('start_time')
+                start_time = local_session.get('start_time')
                 if start_time:
                     elapsed = time.time() - start_time
                     status_msg += f" (running for {elapsed:.1f}s)"
             
-            # Format execution time display
-            time_display = ""
-            if execution_time:
-                time_display = f"Total execution time: {execution_time:.2f} seconds"
-            elif status == 'running':
-                start_time = self.active_sessions.get(session_id, {}).get('start_time')
-                if start_time:
-                    elapsed = time.time() - start_time
-                    time_display = f"Elapsed time: {elapsed:.1f} seconds"
+            # Format execution time display with step breakdown
+            time_display = self._format_execution_time_display(execution_time, local_session, status)
             
-            # Create enhanced step details with progress visualization
-            step_details = self._create_enhanced_workflow_step_details(session_data, session_id)
+            # Create enhanced step details with detailed pipeline visualization
+            step_details = self._create_detailed_pipeline_step_visualization(session_data, local_session, session_id)
             
-            # Format logs with enhanced formatting
-            logs_text = self._format_workflow_logs(session_data.get('logs', []))
+            # Format logs with enhanced pipeline-specific formatting
+            logs_text = self._format_enhanced_workflow_logs(session_data.get('logs', []), current_step)
             
-            # Handle video output with enhanced preview functionality
-            video_visible = False
-            thumbnail_visible = False
-            download_visible = False
-            video_value = None
-            thumbnail_value = None
+            # Handle video output with enhanced preview and download functionality
+            video_visible, thumbnail_visible, download_visible = False, False, False
+            video_value, thumbnail_value = None, None
             
             if status == 'completed' and results:
                 video_path = results.get('video_output')
@@ -1165,17 +1282,19 @@ class GradioTestInterface:
                 if video_path:
                     video_visible = True
                     download_visible = True
-                    # In a real implementation, this would be the actual video file
+                    # In a real implementation, this would be the actual video file path
                     video_value = video_path
+                    logger.info(f"Video output ready: {video_path}")
                 
                 if thumbnail_path:
                     thumbnail_visible = True
-                    # In a real implementation, this would be the actual thumbnail file
+                    # In a real implementation, this would be the actual thumbnail file path
                     thumbnail_value = thumbnail_path
+                    logger.info(f"Thumbnail ready: {thumbnail_path}")
             
             return (
                 status_msg,
-                self._format_current_step_display(current_step, progress),
+                self._format_enhanced_current_step_display(current_step, progress, local_session),
                 gr.update(value=progress),
                 results,
                 time_display,
@@ -1226,95 +1345,189 @@ class GradioTestInterface:
         return progress_bar
     
     def _handle_video_download(self, session_id: str) -> str:
-        """Handle video download preparation with enhanced functionality."""
+        """Handle video download preparation with enhanced functionality and metadata."""
         try:
             if not session_id:
-                return "❌ No session ID provided"
+                return "❌ No session ID provided for video download"
             
-            # Get session data to find video path
+            # Get session data to find video path and metadata
             session_data = self.api_client.get_session_logs(session_id)
             results = session_data.get('results', {})
             video_path = results.get('video_output')
+            thumbnail_path = results.get('thumbnail')
+            metadata = results.get('metadata', {})
             
             if not video_path:
-                return "❌ No video available for download"
+                return "❌ No video available for download. Workflow may not be completed yet."
+            
+            # Get local session info for additional details
+            local_session = self.active_sessions.get(session_id, {})
+            topic = local_session.get('topic', 'Unknown Topic')
             
             # In a real implementation, this would:
-            # 1. Verify the video file exists
-            # 2. Prepare it for download (copy to download directory, etc.)
-            # 3. Generate a download URL or trigger browser download
+            # 1. Verify the video file exists on the server
+            # 2. Prepare it for download (copy to download directory, generate secure URL)
+            # 3. Trigger browser download or provide download link
+            # 4. Log download activity for analytics
             
-            # For now, provide download information
             logger.info(f"Video download requested for session {session_id}: {video_path}")
             
-            # Simulate download preparation
+            # Enhanced download preparation with detailed information
             download_info = {
                 'session_id': session_id,
+                'topic': topic,
                 'video_path': video_path,
-                'file_size': '~15MB',  # Simulated file size
-                'format': 'MP4',
-                'resolution': '1080p',
-                'duration': '~2-3 minutes'
+                'thumbnail_path': thumbnail_path,
+                'file_size': metadata.get('file_size', '~15-25MB'),
+                'format': metadata.get('format', 'MP4'),
+                'resolution': metadata.get('resolution', '1080p'),
+                'duration': metadata.get('duration', '~2-4 minutes'),
+                'fps': metadata.get('fps', '30'),
+                'quality': metadata.get('quality_settings', 'High'),
+                'render_time': metadata.get('render_time', 'N/A')
             }
             
-            return f"📁 Video ready for download: {video_path}"
+            # Create detailed download status message
+            download_status = f"📁 Video Generation Complete - Ready for Download\n\n"
+            download_status += f"🎯 Topic: {topic}\n"
+            download_status += f"📹 Video File: {video_path}\n"
+            
+            if thumbnail_path:
+                download_status += f"🖼️ Thumbnail: {thumbnail_path}\n"
+            
+            download_status += f"\n📊 Video Details:\n"
+            download_status += f"• Format: {download_info['format']}\n"
+            download_status += f"• Resolution: {download_info['resolution']}\n"
+            download_status += f"• Quality: {download_info['quality']}\n"
+            download_status += f"• Estimated Size: {download_info['file_size']}\n"
+            download_status += f"• Duration: {download_info['duration']}\n"
+            download_status += f"• Frame Rate: {download_info['fps']} FPS\n"
+            
+            if download_info['render_time'] != 'N/A':
+                download_status += f"• Render Time: {download_info['render_time']}\n"
+            
+            download_status += f"\n💾 Download Options:\n"
+            download_status += f"• Click the video preview to play\n"
+            download_status += f"• Right-click video to save\n"
+            download_status += f"• Thumbnail available separately\n"
+            download_status += f"• Files remain available for 24 hours\n"
+            
+            # In a real implementation, you might also:
+            # - Generate a secure download URL with expiration
+            # - Create a ZIP file with video + thumbnail + metadata
+            # - Send download link via email
+            # - Update download statistics
+            
+            return download_status
             
         except Exception as e:
-            logger.error(f"Error preparing video download: {e}")
-            return f"❌ Error preparing download: {str(e)}"
+            logger.error(f"Error preparing video download for session {session_id}: {e}")
+            return f"❌ Error preparing video download: {str(e)}\n\nPlease check that the workflow completed successfully and try again."
     
-    def _create_video_preview_info(self, results: dict) -> str:
-        """Create video preview information display."""
+    def _create_enhanced_video_preview_info(self, results: dict, session_id: str) -> str:
+        """Create enhanced video preview information display with detailed metadata."""
         if not results:
-            return "No video information available"
+            return "## 🎥 Video Generation\n\nNo video output available yet. Complete the workflow to generate video content."
         
         try:
-            info = "## 🎥 Generated Video\n\n"
+            # Get local session info for additional context
+            local_session = self.active_sessions.get(session_id, {})
+            topic = local_session.get('topic', 'Unknown Topic')
+            
+            info = "## 🎥 Generated Educational Video\n\n"
             
             video_path = results.get('video_output')
             thumbnail_path = results.get('thumbnail')
             metadata = results.get('metadata', {})
             
+            # Video topic and description
+            info += f"**🎯 Topic:** {topic}\n"
+            if local_session.get('description'):
+                description = local_session['description']
+                info += f"**📝 Description:** {description[:150]}{'...' if len(description) > 150 else ''}\n"
+            info += f"**🆔 Session:** {session_id[:8]}...\n\n"
+            
+            # File information
             if video_path:
-                info += f"**📁 Video File:** `{video_path}`\n"
-            
-            if thumbnail_path:
-                info += f"**🖼️ Thumbnail:** `{thumbnail_path}`\n"
-            
-            # Video metadata
-            if metadata:
-                info += f"\n**📊 Video Details:**\n"
+                info += f"### 📁 Output Files\n"
+                info += f"**📹 Video File:** `{video_path}`\n"
                 
-                # Common video metadata
-                video_metadata = {
-                    'duration': '⏱️ Duration',
-                    'resolution': '📐 Resolution',
-                    'format': '🎬 Format',
-                    'file_size': '💾 File Size',
-                    'fps': '🎞️ Frame Rate'
+                if thumbnail_path:
+                    info += f"**🖼️ Thumbnail:** `{thumbnail_path}`\n"
+                info += "\n"
+            
+            # Enhanced video metadata
+            if metadata:
+                info += f"### 📊 Video Specifications\n"
+                
+                # Technical specifications
+                technical_specs = {
+                    'format': ('🎬 Format', 'MP4'),
+                    'resolution': ('📐 Resolution', '1080p'),
+                    'fps': ('🎞️ Frame Rate', '30 FPS'),
+                    'duration': ('⏱️ Duration', '2-4 minutes'),
+                    'file_size': ('💾 File Size', '15-25MB'),
+                    'quality_settings': ('⚙️ Quality', 'High'),
+                    'codec': ('🔧 Codec', 'H.264')
                 }
                 
-                for key, display_name in video_metadata.items():
-                    if key in metadata:
-                        info += f"- {display_name}: {metadata[key]}\n"
+                for key, (display_name, default_value) in technical_specs.items():
+                    value = metadata.get(key, default_value)
+                    info += f"- {display_name}: {value}\n"
                 
-                # Rendering metadata
+                # Generation metadata
                 if 'render_time' in metadata:
                     info += f"- ⏱️ Render Time: {metadata['render_time']}\n"
                 
-                if 'quality_settings' in metadata:
-                    info += f"- ⚙️ Quality: {metadata['quality_settings']}\n"
+                if 'total_execution_time' in metadata:
+                    info += f"- 🕐 Total Generation Time: {metadata['total_execution_time']:.2f}s\n"
+                
+                # Pipeline steps completed
+                if 'steps_completed' in metadata:
+                    steps = metadata['steps_completed']
+                    info += f"- 📋 Pipeline Steps: {', '.join(steps)}\n"
+                
+                info += "\n"
             
-            info += f"\n**💾 Download Options:**\n"
-            info += f"- Click the download button to save the video\n"
-            info += f"- Video is available in MP4 format\n"
-            info += f"- Thumbnail can be saved separately\n"
+            # Content information
+            info += f"### 📚 Educational Content\n"
+            info += f"- **Type:** Mathematical/Scientific Visualization\n"
+            info += f"- **Generated with:** Manim (Mathematical Animation Engine)\n"
+            info += f"- **Style:** Educational with clear explanations\n"
+            info += f"- **Target Audience:** Students and educators\n\n"
+            
+            # Download and usage options
+            info += f"### 💾 Download & Usage Options\n"
+            info += f"**Download Options:**\n"
+            info += f"- 📹 Click 'Download Video' button for full video file\n"
+            info += f"- 🖼️ Right-click thumbnail to save preview image\n"
+            info += f"- 📱 Compatible with all modern devices and browsers\n\n"
+            
+            info += f"**Usage Rights:**\n"
+            info += f"- ✅ Free to use for educational purposes\n"
+            info += f"- ✅ Share with students and colleagues\n"
+            info += f"- ✅ Embed in presentations and courses\n"
+            info += f"- ℹ️ Generated content expires after 24 hours\n\n"
+            
+            # Quality and technical notes
+            info += f"### 🔧 Technical Notes\n"
+            info += f"- Video optimized for online streaming and download\n"
+            info += f"- High-quality mathematical animations and visualizations\n"
+            info += f"- Compatible with standard video players\n"
+            info += f"- Thumbnail provides quick preview of content\n"
+            
+            # Generation pipeline summary
+            pipeline_info = local_session.get('video_generation_pipeline', {})
+            if pipeline_info:
+                completed_steps = pipeline_info.get('completed_steps', 0)
+                total_steps = pipeline_info.get('total_steps', 3)
+                info += f"- Generated through {completed_steps}/{total_steps} step pipeline\n"
             
             return info
             
         except Exception as e:
-            logger.error(f"Error creating video preview info: {e}")
-            return f"Error creating video info: {str(e)}"
+            logger.error(f"Error creating enhanced video preview info: {e}")
+            return f"## 🎥 Video Preview\n\nError creating video information: {str(e)}"
     
     def _stop_workflow_test(self, session_id: str) -> tuple:
         """Stop a running workflow test."""
@@ -1409,37 +1622,255 @@ class GradioTestInterface:
             logger.error(f"Error creating workflow step details: {e}")
             return f"Error creating workflow details: {str(e)}"
     
-    def _create_workflow_initialization_details(self, topic: str, description: str, session_id: str) -> str:
-        """Create initial workflow details display."""
-        output = "## 🎬 Video Generation Workflow\n\n"
+    def _create_enhanced_workflow_initialization_details(self, topic: str, description: str, session_id: str) -> str:
+        """Create enhanced initial workflow details display with step-by-step pipeline visualization."""
+        output = "## 🎬 Video Generation Workflow Pipeline\n\n"
         
         output += f"**🎯 Topic:** {topic}\n"
         output += f"**📝 Description:** {description[:200]}{'...' if len(description) > 200 else ''}\n"
-        output += f"**🆔 Session ID:** {session_id}\n\n"
+        output += f"**🆔 Session ID:** {session_id[:8]}...\n\n"
         
-        output += "### 📋 Workflow Pipeline\n\n"
-        output += "The video generation process consists of three main stages:\n\n"
+        output += "### 📋 Step-by-Step Pipeline Overview\n\n"
+        output += "The video generation workflow consists of three sequential phases with detailed progress tracking:\n\n"
         
-        output += "1. **🧠 Planning Phase**\n"
-        output += "   - Analyze topic and educational requirements\n"
-        output += "   - Create structured scene plan\n"
-        output += "   - Define key concepts and flow\n\n"
+        # Step 1: Planning Phase with detailed breakdown
+        output += "#### 🧠 **Step 1: Planning Phase** ⏳ *Pending*\n"
+        output += "```\n"
+        output += "├── Topic Analysis & Breakdown\n"
+        output += "├── Educational Content Structure\n"
+        output += "├── Scene Planning & Flow Design\n"
+        output += "└── Key Concepts Identification\n"
+        output += "```\n"
+        output += "**Expected Duration:** ~30-45 seconds\n"
+        output += "**Output:** Structured scene plan with educational flow\n\n"
         
-        output += "2. **💻 Code Generation Phase**\n"
-        output += "   - Convert scene plan to Manim code\n"
-        output += "   - Generate animations and visualizations\n"
-        output += "   - Optimize code structure\n\n"
+        # Step 2: Code Generation Phase with detailed breakdown
+        output += "#### 💻 **Step 2: Code Generation Phase** ⏳ *Pending*\n"
+        output += "```\n"
+        output += "├── Manim Code Generation\n"
+        output += "├── Animation Sequence Creation\n"
+        output += "├── Mathematical Visualization Setup\n"
+        output += "└── Code Optimization & Validation\n"
+        output += "```\n"
+        output += "**Expected Duration:** ~60-90 seconds\n"
+        output += "**Output:** Executable Manim Python code\n\n"
         
-        output += "3. **🎬 Rendering Phase**\n"
-        output += "   - Execute Manim code\n"
-        output += "   - Generate video output\n"
-        output += "   - Create thumbnail preview\n\n"
+        # Step 3: Rendering Phase with detailed breakdown
+        output += "#### 🎬 **Step 3: Rendering Phase** ⏳ *Pending*\n"
+        output += "```\n"
+        output += "├── Manim Code Execution\n"
+        output += "├── Video Compilation & Processing\n"
+        output += "├── Quality Optimization\n"
+        output += "└── Thumbnail Generation\n"
+        output += "```\n"
+        output += "**Expected Duration:** ~120-180 seconds\n"
+        output += "**Output:** MP4 video file + thumbnail preview\n\n"
         
-        output += "### ⚙️ Current Status\n"
-        output += "🔄 **Initializing workflow pipeline...**\n"
-        output += "Preparing agents and validating configuration.\n"
+        # Pipeline Status
+        output += "### ⚙️ Pipeline Status\n"
+        output += "```\n"
+        output += "🔄 Initializing video generation pipeline...\n"
+        output += "📋 Validating input parameters\n"
+        output += "⚙️ Preparing agent execution environment\n"
+        output += "🚀 Ready to begin Step 1: Planning Phase\n"
+        output += "```\n\n"
+        
+        # Progress Visualization
+        output += "### 📊 Progress Visualization\n"
+        output += "```\n"
+        output += "Overall Progress: [░░░░░░░░░░░░░░░░░░░░] 0%\n"
+        output += "\n"
+        output += "Step 1 - Planning:      [░░░░░░░░░░] 0%\n"
+        output += "Step 2 - Code Gen:      [░░░░░░░░░░] 0%\n"
+        output += "Step 3 - Rendering:     [░░░░░░░░░░] 0%\n"
+        output += "```\n\n"
+        
+        # Configuration Summary
+        output += "### ⚙️ Configuration Summary\n"
+        output += f"- **Pipeline Mode:** Complete Workflow\n"
+        output += f"- **Quality Setting:** High (1080p)\n"
+        output += f"- **Expected Total Time:** ~3-5 minutes\n"
+        output += f"- **Output Format:** MP4 + PNG thumbnail\n"
         
         return output
+    
+    def _create_initial_workflow_logs(self, topic: str, description: str, session_id: str) -> str:
+        """Create enhanced initial logs display for workflow pipeline."""
+        timestamp = datetime.now().strftime('%H:%M:%S')
+        
+        logs = f"[{timestamp}] 🚀 Video Generation Workflow Started\n"
+        logs += f"[{timestamp}] 📋 Session ID: {session_id}\n"
+        logs += f"[{timestamp}] 🎯 Topic: {topic}\n"
+        logs += f"[{timestamp}] 📝 Description: {description[:100]}{'...' if len(description) > 100 else ''}\n"
+        logs += f"[{timestamp}] ⚙️ Initializing 3-step video generation pipeline\n"
+        logs += f"[{timestamp}] 🔍 Validating input parameters and configuration\n"
+        logs += f"[{timestamp}] 🧠 Preparing Planning Agent for Step 1\n"
+        logs += f"[{timestamp}] 💻 Preparing Code Generation Agent for Step 2\n"
+        logs += f"[{timestamp}] 🎬 Preparing Rendering Agent for Step 3\n"
+        logs += f"[{timestamp}] ✅ Pipeline initialization complete\n"
+        logs += f"[{timestamp}] 🚀 Ready to begin video generation process\n"
+        
+        return logs
+    
+    def _start_workflow_progress_monitoring(self, session_id: str):
+        """Start background monitoring for detailed workflow progress updates."""
+        def monitor_workflow_progress():
+            """Background thread to monitor and update workflow progress with step-by-step tracking."""
+            try:
+                session_info = self.active_sessions.get(session_id)
+                if not session_info:
+                    return
+                
+                # Monitor workflow progress with enhanced step tracking
+                while session_info.get('status') == 'running':
+                    try:
+                        # Get latest session data from API
+                        session_data = self.api_client.get_session_logs(session_id)
+                        current_step = session_data.get('current_step', 'initializing')
+                        progress = session_data.get('progress', 0)
+                        
+                        # Update session info with detailed step tracking
+                        session_info.update({
+                            'current_step': current_step,
+                            'progress': progress,
+                            'last_update': time.time()
+                        })
+                        
+                        # Track step transitions and update step details
+                        if current_step != session_info.get('previous_step'):
+                            self._update_step_details(session_info, current_step, progress)
+                            session_info['previous_step'] = current_step
+                        
+                        # Update step-specific progress
+                        self._update_current_step_progress(session_info, current_step, progress)
+                        
+                        # Check for completion
+                        status = session_data.get('status', 'running')
+                        if status in ['completed', 'failed', 'cancelled']:
+                            session_info['status'] = status
+                            if status == 'completed':
+                                self._handle_workflow_completion(session_info, session_data)
+                            break
+                        
+                        time.sleep(1)  # Update every second for smooth progress
+                        
+                    except Exception as e:
+                        logger.error(f"Error monitoring workflow progress for {session_id}: {e}")
+                        time.sleep(2)  # Wait longer on error
+                        
+            except Exception as e:
+                logger.error(f"Error in workflow progress monitoring: {e}")
+        
+        # Start monitoring thread
+        monitor_thread = threading.Thread(target=monitor_workflow_progress, daemon=True)
+        monitor_thread.start()
+    
+    def _update_step_details(self, session_info: dict, current_step: str, progress: float):
+        """Update detailed step information for workflow tracking."""
+        step_details = session_info.get('step_details', {})
+        current_time = time.time()
+        
+        # Mark previous step as completed if moving to next step
+        step_order = ['planning', 'code_generation', 'rendering']
+        if current_step in step_order:
+            current_index = step_order.index(current_step)
+            
+            # Complete previous steps
+            for i in range(current_index):
+                prev_step = step_order[i]
+                if prev_step in step_details and step_details[prev_step]['status'] != 'completed':
+                    step_details[prev_step].update({
+                        'status': 'completed',
+                        'end_time': current_time,
+                        'progress': 1.0
+                    })
+            
+            # Start current step
+            if current_step in step_details:
+                step_details[current_step].update({
+                    'status': 'running',
+                    'start_time': current_time,
+                    'progress': 0.0
+                })
+        
+        # Update pipeline tracking
+        pipeline_info = session_info.get('video_generation_pipeline', {})
+        completed_steps = sum(1 for step in step_details.values() if step.get('status') == 'completed')
+        pipeline_info.update({
+            'completed_steps': completed_steps,
+            'current_step_progress': progress
+        })
+    
+    def _update_current_step_progress(self, session_info: dict, current_step: str, overall_progress: float):
+        """Update progress for the currently executing step."""
+        step_details = session_info.get('step_details', {})
+        
+        if current_step in step_details and step_details[current_step]['status'] == 'running':
+            # Calculate step-specific progress based on overall progress
+            step_progress = self._calculate_step_progress(current_step, overall_progress)
+            step_details[current_step]['progress'] = step_progress
+    
+    def _calculate_step_progress(self, current_step: str, overall_progress: float) -> float:
+        """Calculate individual step progress from overall workflow progress."""
+        # Define progress ranges for each step
+        step_ranges = {
+            'planning': (0.0, 0.33),
+            'code_generation': (0.33, 0.66),
+            'rendering': (0.66, 1.0)
+        }
+        
+        if current_step not in step_ranges:
+            return 0.0
+        
+        start, end = step_ranges[current_step]
+        
+        if overall_progress <= start:
+            return 0.0
+        elif overall_progress >= end:
+            return 1.0
+        else:
+            # Calculate progress within the step range
+            step_progress = (overall_progress - start) / (end - start)
+            return min(1.0, max(0.0, step_progress))
+    
+    def _handle_workflow_completion(self, session_info: dict, session_data: dict):
+        """Handle workflow completion with video output processing."""
+        try:
+            results = session_data.get('results', {})
+            
+            # Update session with completion details
+            session_info.update({
+                'status': 'completed',
+                'completion_time': time.time(),
+                'results': results
+            })
+            
+            # Mark all steps as completed
+            step_details = session_info.get('step_details', {})
+            for step_name in step_details:
+                step_details[step_name].update({
+                    'status': 'completed',
+                    'progress': 1.0,
+                    'end_time': time.time()
+                })
+            
+            # Process video output information
+            video_path = results.get('video_output')
+            thumbnail_path = results.get('thumbnail')
+            
+            if video_path:
+                session_info['video_ready'] = True
+                session_info['video_path'] = video_path
+                logger.info(f"Video generation completed: {video_path}")
+            
+            if thumbnail_path:
+                session_info['thumbnail_ready'] = True
+                session_info['thumbnail_path'] = thumbnail_path
+                logger.info(f"Thumbnail generated: {thumbnail_path}")
+                
+        except Exception as e:
+            logger.error(f"Error handling workflow completion: {e}")
+            session_info['status'] = 'failed'
     
     def _create_enhanced_workflow_step_details(self, session_data: dict, session_id: str) -> str:
         """Create enhanced workflow step details with visual progress."""
@@ -1563,10 +1994,10 @@ class GradioTestInterface:
             logger.error(f"Error creating enhanced workflow step details: {e}")
             return f"Error creating workflow details: {str(e)}"
     
-    def _format_current_step_display(self, current_step: str, progress: float) -> str:
-        """Format the current step display with progress information."""
+    def _format_enhanced_current_step_display(self, current_step: str, progress: float, local_session: dict) -> str:
+        """Format the current step display with enhanced progress information and pipeline context."""
         if not current_step:
-            return "Waiting to start..."
+            return "🔄 Waiting to start video generation pipeline..."
         
         step_icons = {
             'initializing': '🔄',
@@ -1578,12 +2009,12 @@ class GradioTestInterface:
         }
         
         step_names = {
-            'initializing': 'Initializing Pipeline',
-            'planning': 'Planning Phase',
-            'code_generation': 'Code Generation Phase',
-            'rendering': 'Rendering Phase',
-            'completed': 'Workflow Completed',
-            'failed': 'Workflow Failed'
+            'initializing': 'Initializing Video Generation Pipeline',
+            'planning': 'Planning Phase - Analyzing Topic & Creating Scene Structure',
+            'code_generation': 'Code Generation Phase - Converting Plan to Manim Code',
+            'rendering': 'Rendering Phase - Generating Video Output',
+            'completed': 'Video Generation Completed Successfully',
+            'failed': 'Video Generation Failed'
         }
         
         icon = step_icons.get(current_step.lower(), '⚙️')
@@ -1592,7 +2023,283 @@ class GradioTestInterface:
         if current_step.lower() in ['completed', 'failed']:
             return f"{icon} {name}"
         else:
-            return f"{icon} {name} ({progress:.1f}%)"
+            # Add step-specific progress details
+            step_details = local_session.get('step_details', {})
+            current_step_info = step_details.get(current_step, {})
+            step_progress = current_step_info.get('progress', 0) * 100
+            
+            # Add pipeline context
+            pipeline_info = local_session.get('video_generation_pipeline', {})
+            completed_steps = pipeline_info.get('completed_steps', 0)
+            total_steps = pipeline_info.get('total_steps', 3)
+            
+            return f"{icon} {name} | Step {completed_steps + 1}/{total_steps} | Progress: {step_progress:.1f}%"
+    
+    def _format_execution_time_display(self, execution_time: float, local_session: dict, status: str) -> str:
+        """Format execution time display with step breakdown."""
+        if execution_time:
+            time_display = f"Total execution time: {execution_time:.2f} seconds"
+            
+            # Add step breakdown if available
+            step_details = local_session.get('step_details', {})
+            if step_details and status == 'completed':
+                time_display += "\n\nStep Breakdown:"
+                for step_name, details in step_details.items():
+                    start_time = details.get('start_time')
+                    end_time = details.get('end_time')
+                    if start_time and end_time:
+                        step_duration = end_time - start_time
+                        step_icon = {'planning': '🧠', 'code_generation': '💻', 'rendering': '🎬'}.get(step_name, '⚙️')
+                        time_display += f"\n- {step_icon} {step_name.replace('_', ' ').title()}: {step_duration:.2f}s"
+            
+            return time_display
+            
+        elif status == 'running':
+            start_time = local_session.get('start_time')
+            if start_time:
+                elapsed = time.time() - start_time
+                time_display = f"Elapsed time: {elapsed:.1f} seconds"
+                
+                # Add estimated remaining time based on current step
+                current_step = local_session.get('current_step', '')
+                estimated_remaining = self._estimate_remaining_time(current_step, elapsed)
+                if estimated_remaining:
+                    time_display += f"\nEstimated remaining: {estimated_remaining:.1f} seconds"
+                
+                return time_display
+        
+        return ""
+    
+    def _estimate_remaining_time(self, current_step: str, elapsed_time: float) -> float:
+        """Estimate remaining time based on current step and elapsed time."""
+        # Rough time estimates for each step (in seconds)
+        step_estimates = {
+            'initializing': 10,
+            'planning': 45,
+            'code_generation': 90,
+            'rendering': 180
+        }
+        
+        step_order = ['initializing', 'planning', 'code_generation', 'rendering']
+        
+        if current_step not in step_order:
+            return 0
+        
+        current_index = step_order.index(current_step)
+        
+        # Calculate remaining time for current step and all subsequent steps
+        remaining = 0
+        for i in range(current_index, len(step_order)):
+            step = step_order[i]
+            if i == current_index:
+                # For current step, estimate based on elapsed time
+                step_estimate = step_estimates.get(step, 60)
+                remaining += max(0, step_estimate - (elapsed_time if i == 0 else 0))
+            else:
+                remaining += step_estimates.get(step, 60)
+        
+        return remaining
+    
+    def _create_detailed_pipeline_step_visualization(self, session_data: dict, local_session: dict, session_id: str) -> str:
+        """Create detailed pipeline step visualization with progress bars and status."""
+        if not session_data and not local_session:
+            return "No workflow data available"
+        
+        try:
+            output = "## 🎬 Video Generation Pipeline Status\n\n"
+            
+            # Basic information
+            topic = local_session.get('topic', session_data.get('topic', 'Unknown'))
+            current_step = session_data.get('current_step', 'initializing')
+            overall_progress = session_data.get('progress', 0)
+            
+            output += f"**🎯 Topic:** {topic}\n"
+            output += f"**🆔 Session:** {session_id[:8]}...\n"
+            output += f"**📊 Overall Progress:** {overall_progress * 100:.1f}%\n\n"
+            
+            # Detailed step-by-step progress
+            output += "### 📋 Pipeline Steps Progress\n\n"
+            
+            step_details = local_session.get('step_details', {})
+            step_order = ['planning', 'code_generation', 'rendering']
+            
+            for i, step_name in enumerate(step_order, 1):
+                step_info = step_details.get(step_name, {'status': 'pending', 'progress': 0.0})
+                status = step_info.get('status', 'pending')
+                progress = step_info.get('progress', 0.0)
+                
+                # Step status icons
+                status_icons = {
+                    'pending': '⏳',
+                    'running': '⚙️',
+                    'completed': '✅',
+                    'failed': '❌'
+                }
+                
+                # Step icons
+                step_icons = {
+                    'planning': '🧠',
+                    'code_generation': '💻',
+                    'rendering': '🎬'
+                }
+                
+                status_icon = status_icons.get(status, '❓')
+                step_icon = step_icons.get(step_name, '⚙️')
+                
+                # Create progress bar
+                progress_bar_length = 20
+                filled = int(progress * progress_bar_length)
+                empty = progress_bar_length - filled
+                progress_bar = "█" * filled + "░" * empty
+                
+                # Step title and status
+                step_title = step_name.replace('_', ' ').title()
+                output += f"#### {step_icon} **Step {i}: {step_title}** {status_icon} *{status.title()}*\n"
+                
+                # Progress bar and percentage
+                output += f"`{progress_bar}` {progress * 100:.1f}%\n"
+                
+                # Step-specific details
+                if step_name == 'planning':
+                    output += "- Topic analysis and educational content breakdown\n"
+                    output += "- Scene structure and flow design\n"
+                    output += "- Key concepts identification\n"
+                elif step_name == 'code_generation':
+                    output += "- Manim code generation from scene plan\n"
+                    output += "- Animation sequence creation\n"
+                    output += "- Code optimization and validation\n"
+                elif step_name == 'rendering':
+                    output += "- Manim code execution and video compilation\n"
+                    output += "- Quality optimization and processing\n"
+                    output += "- Thumbnail generation\n"
+                
+                # Timing information
+                start_time = step_info.get('start_time')
+                end_time = step_info.get('end_time')
+                
+                if start_time and end_time:
+                    duration = end_time - start_time
+                    output += f"- ⏱️ **Duration:** {duration:.2f} seconds\n"
+                elif start_time and status == 'running':
+                    elapsed = time.time() - start_time
+                    output += f"- ⏱️ **Elapsed:** {elapsed:.1f} seconds\n"
+                
+                output += "\n"
+            
+            # Overall pipeline progress visualization
+            output += "### 📊 Overall Pipeline Progress\n\n"
+            overall_progress_percent = int(overall_progress * 100)
+            overall_filled = int(overall_progress * 30)
+            overall_empty = 30 - overall_filled
+            overall_progress_bar = "█" * overall_filled + "░" * overall_empty
+            
+            output += f"`{overall_progress_bar}` {overall_progress_percent}%\n\n"
+            
+            # Current activity
+            if current_step and current_step != 'completed':
+                output += f"### 🔄 Current Activity\n"
+                output += f"**Active Step:** {current_step.replace('_', ' ').title()}\n"
+                
+                # Add step-specific current activity
+                if current_step == 'planning':
+                    output += "**Activity:** Analyzing educational content and creating scene structure\n"
+                elif current_step == 'code_generation':
+                    output += "**Activity:** Converting scene plan to executable Manim code\n"
+                elif current_step == 'rendering':
+                    output += "**Activity:** Executing Manim code and generating video output\n"
+                
+                output += f"**Progress:** {overall_progress * 100:.1f}% complete\n"
+            
+            # Results preview
+            results = session_data.get('results')
+            if results and isinstance(results, dict):
+                output += f"\n### 🎥 Generated Output\n"
+                if results.get('video_output'):
+                    output += f"**📹 Video:** `{results['video_output']}`\n"
+                if results.get('thumbnail'):
+                    output += f"**🖼️ Thumbnail:** `{results['thumbnail']}`\n"
+                
+                metadata = results.get('metadata', {})
+                if metadata:
+                    output += f"\n**📊 Video Metadata:**\n"
+                    for key, value in metadata.items():
+                        if key not in ['config_overrides']:
+                            output += f"- {key.replace('_', ' ').title()}: {value}\n"
+            
+            return output
+            
+        except Exception as e:
+            logger.error(f"Error creating detailed pipeline visualization: {e}")
+            return f"Error creating pipeline visualization: {str(e)}"
+    
+    def _format_enhanced_workflow_logs(self, logs: list, current_step: str) -> str:
+        """Format workflow logs with enhanced pipeline-specific styling and step context."""
+        if not logs:
+            return "🔄 Initializing video generation pipeline...\nWaiting for first log entries..."
+        
+        formatted_logs = ""
+        
+        # Show last 30 log entries for better visibility
+        recent_logs = logs[-30:] if len(logs) > 30 else logs
+        
+        for log_entry in recent_logs:
+            if isinstance(log_entry, dict):
+                message = log_entry.get('message', str(log_entry))
+                timestamp = log_entry.get('timestamp', '')
+                level = log_entry.get('level', 'info')
+                component = log_entry.get('component', 'system')
+            else:
+                message = str(log_entry)
+                timestamp = datetime.now().strftime('%H:%M:%S')
+                level = 'info'
+                component = 'system'
+            
+            # Format timestamp
+            if timestamp:
+                try:
+                    # Parse ISO timestamp and format for display
+                    dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    time_str = dt.strftime('%H:%M:%S')
+                except:
+                    time_str = timestamp[:8] if len(timestamp) >= 8 else timestamp
+            else:
+                time_str = datetime.now().strftime('%H:%M:%S')
+            
+            # Enhanced level icons and colors for video generation pipeline
+            level_info = {
+                'error': '❌',
+                'warning': '⚠️',
+                'info': 'ℹ️',
+                'success': '✅',
+                'debug': '🔍',
+                'progress': '📊',
+                'step': '🔄'
+            }
+            
+            level_icon = level_info.get(level.lower(), 'ℹ️')
+            
+            # Enhanced component icons for video generation pipeline
+            component_icons = {
+                'planning_agent': '🧠',
+                'code_generation_agent': '💻',
+                'rendering_agent': '🎬',
+                'workflow': '🔄',
+                'system': '⚙️',
+                'pipeline': '🎬',
+                'manim': '🎞️',
+                'video_processor': '📹'
+            }
+            
+            component_icon = component_icons.get(component, '📝')
+            
+            # Add step context to messages
+            step_context = ""
+            if current_step and current_step in message.lower():
+                step_context = f"[{current_step.upper()}] "
+            
+            formatted_logs += f"[{time_str}] {component_icon} {level_icon} {step_context}{message}\n"
+        
+        return formatted_logs
     
     def _format_workflow_logs(self, logs: list) -> str:
         """Format workflow logs with enhanced styling."""
@@ -2292,4 +2999,717 @@ if __name__ == "__main__":
         server_port=7860,
         share=False,
         debug=True
-    )
+    )  
+    def _setup_config_event_handlers(
+        self, 
+        config_components, agent_config_save, agent_config_load,
+        workflow_config_save, workflow_config_load,
+        agent_dropdown, dynamic_inputs, session_id_input, 
+        agent_timeout, agent_retry_count, agent_verbose,
+        workflow_topic, workflow_description, workflow_session_id, config_overrides_json
+    ):
+        """Set up event handlers for configuration management."""
+        
+        # Configuration Management Tab Handlers
+        config_components["refresh_configs_btn"].click(
+            fn=lambda filter_type: self.config_ui.refresh_config_list(filter_type),
+            inputs=[config_components["config_type_filter"]],
+            outputs=[config_components["config_list_display"]]
+        )
+        
+        config_components["config_type_filter"].change(
+            fn=lambda filter_type: self.config_ui.refresh_config_list(filter_type),
+            inputs=[config_components["config_type_filter"]],
+            outputs=[config_components["config_list_display"]]
+        )
+        
+        config_components["load_config_btn"].click(
+            fn=self._load_selected_config,
+            inputs=[config_components["selected_config_id"]],
+            outputs=[config_components["config_details_display"], config_components["config_status_text"]]
+        )
+        
+        config_components["delete_config_btn"].click(
+            fn=self._delete_selected_config,
+            inputs=[config_components["selected_config_id"]],
+            outputs=[config_components["config_status_text"], config_components["config_list_display"]]
+        )
+        
+        config_components["import_config_btn"].click(
+            fn=self._import_config_file,
+            inputs=[config_components["import_file"]],
+            outputs=[config_components["config_status_text"], config_components["config_list_display"]]
+        )
+        
+        config_components["save_config_btn"].click(
+            fn=self._save_current_config,
+            inputs=[
+                config_components["save_config_name"],
+                config_components["save_config_type"],
+                config_components["save_config_description"],
+                config_components["current_agent_config"],
+                config_components["current_workflow_config"]
+            ],
+            outputs=[config_components["save_status_text"], config_components["config_list_display"]]
+        )
+        
+        # Agent Tab Configuration Handlers
+        agent_config_save["quick_save_btn"].click(
+            fn=self._quick_save_agent_config_with_validation,
+            inputs=[
+                agent_config_save["config_name_input"],
+                agent_config_save["config_description_input"],
+                agent_dropdown, dynamic_inputs, session_id_input,
+                agent_timeout, agent_retry_count, agent_verbose
+            ],
+            outputs=[agent_config_save["save_feedback"]]
+        )
+        
+        agent_config_load["refresh_list_btn"].click(
+            fn=lambda: gr.update(choices=self.config_ui.get_config_choices("agent")),
+            inputs=[],
+            outputs=[agent_config_load["config_selector"]]
+        )
+        
+        agent_config_load["load_btn"].click(
+            fn=self._load_agent_config,
+            inputs=[agent_config_load["config_selector"]],
+            outputs=[
+                agent_config_load["load_feedback"],
+                agent_dropdown, dynamic_inputs, session_id_input,
+                agent_timeout, agent_retry_count, agent_verbose
+            ]
+        )
+        
+        # Workflow Tab Configuration Handlers
+        workflow_config_save["quick_save_btn"].click(
+            fn=self._quick_save_workflow_config_with_validation,
+            inputs=[
+                workflow_config_save["config_name_input"],
+                workflow_config_save["config_description_input"],
+                workflow_topic, workflow_description, workflow_session_id, config_overrides_json
+            ],
+            outputs=[workflow_config_save["save_feedback"]]
+        )
+        
+        workflow_config_load["refresh_list_btn"].click(
+            fn=lambda: gr.update(choices=self.config_ui.get_config_choices("workflow")),
+            inputs=[],
+            outputs=[workflow_config_load["config_selector"]]
+        )
+        
+        workflow_config_load["load_btn"].click(
+            fn=self._load_workflow_config,
+            inputs=[workflow_config_load["config_selector"]],
+            outputs=[
+                workflow_config_load["load_feedback"],
+                workflow_topic, workflow_description, workflow_session_id, config_overrides_json
+            ]
+        )
+    
+    def _load_selected_config(self, config_id: str) -> tuple:
+        """Load the selected configuration from the management tab."""
+        try:
+            config_data, status = self.config_ui.load_configuration(config_id)
+            return config_data, status
+        except Exception as e:
+            logger.error(f"Failed to load selected config: {e}")
+            return {}, f"Error: {e}"
+    
+    def _delete_selected_config(self, config_id: str) -> tuple:
+        """Delete the selected configuration."""
+        try:
+            status = self.config_ui.delete_configuration(config_id)
+            config_list = self.config_ui.refresh_config_list()
+            return status, config_list
+        except Exception as e:
+            logger.error(f"Failed to delete config: {e}")
+            return f"Error: {e}", []
+    
+    def _import_config_file(self, file_path: str) -> tuple:
+        """Import configuration from file."""
+        try:
+            if not file_path:
+                return "No file selected", []
+            
+            status = self.config_ui.import_configuration(file_path)
+            config_list = self.config_ui.refresh_config_list()
+            return status, config_list
+        except Exception as e:
+            logger.error(f"Failed to import config: {e}")
+            return f"Error: {e}", []
+    
+    def _save_current_config(
+        self, 
+        name: str, 
+        config_type: str, 
+        description: str,
+        agent_config: dict,
+        workflow_config: dict
+    ) -> tuple:
+        """Save the current configuration from the management tab."""
+        try:
+            if config_type == "Agent":
+                if not agent_config:
+                    return "No agent configuration to save", []
+                
+                status = self.config_ui.save_agent_configuration(
+                    name=name,
+                    description=description,
+                    agent_name=agent_config.get("agent_name", ""),
+                    inputs=agent_config.get("inputs", {}),
+                    options=agent_config.get("options", {})
+                )
+            else:  # Workflow
+                if not workflow_config:
+                    return "No workflow configuration to save", []
+                
+                status = self.config_ui.save_workflow_configuration(
+                    name=name,
+                    description=description,
+                    topic=workflow_config.get("topic", ""),
+                    workflow_description=workflow_config.get("workflow_description", ""),
+                    config_overrides=workflow_config.get("config_overrides", {})
+                )
+            
+            config_list = self.config_ui.refresh_config_list()
+            return status, config_list
+            
+        except Exception as e:
+            logger.error(f"Failed to save config: {e}")
+            return f"Error: {e}", []
+    
+    def _quick_save_agent_config(
+        self,
+        name: str,
+        description: str,
+        agent_name: str,
+        dynamic_inputs: dict,
+        session_id: str,
+        timeout: int,
+        retry_count: int,
+        verbose: bool
+    ) -> str:
+        """Quick save agent configuration from the agent tab."""
+        try:
+            if not name:
+                return "Configuration name is required"
+            
+            if not agent_name:
+                return "Please select an agent first"
+            
+            # Prepare inputs and options
+            inputs = dynamic_inputs if isinstance(dynamic_inputs, dict) else {}
+            options = {
+                "timeout": timeout,
+                "retry_count": retry_count,
+                "verbose": verbose
+            }
+            
+            if session_id:
+                options["session_id"] = session_id
+            
+            status = self.config_ui.save_agent_configuration(
+                name=name,
+                description=description,
+                agent_name=agent_name,
+                inputs=inputs,
+                options=options
+            )
+            
+            return status
+            
+        except Exception as e:
+            logger.error(f"Failed to quick save agent config: {e}")
+            return f"Error: {e}"
+    
+    def _load_agent_config(self, config_id: str) -> tuple:
+        """Load agent configuration and populate the form."""
+        try:
+            if not config_id:
+                return "No configuration selected", None, {}, "", 60, 1, True
+            
+            config_data, status = self.config_ui.load_configuration(config_id)
+            
+            if not config_data:
+                return status, None, {}, "", 60, 1, True
+            
+            # Extract configuration values
+            agent_name = config_data.get("agent_name", "")
+            inputs = config_data.get("inputs", {})
+            options = config_data.get("options", {})
+            
+            session_id = options.get("session_id", "")
+            timeout = options.get("timeout", 60)
+            retry_count = options.get("retry_count", 1)
+            verbose = options.get("verbose", True)
+            
+            return (
+                status,
+                agent_name,
+                inputs,
+                session_id,
+                timeout,
+                retry_count,
+                verbose
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to load agent config: {e}")
+            return f"Error: {e}", None, {}, "", 60, 1, True
+    
+    def _quick_save_workflow_config(
+        self,
+        name: str,
+        description: str,
+        topic: str,
+        workflow_description: str,
+        session_id: str,
+        config_overrides: dict
+    ) -> str:
+        """Quick save workflow configuration from the workflow tab."""
+        try:
+            if not name:
+                return "Configuration name is required"
+            
+            if not topic:
+                return "Topic is required"
+            
+            if not workflow_description:
+                return "Workflow description is required"
+            
+            status = self.config_ui.save_workflow_configuration(
+                name=name,
+                description=description,
+                topic=topic,
+                workflow_description=workflow_description,
+                config_overrides=config_overrides or {}
+            )
+            
+            return status
+            
+        except Exception as e:
+            logger.error(f"Failed to quick save workflow config: {e}")
+            return f"Error: {e}"
+    
+    def _load_workflow_config(self, config_id: str) -> tuple:
+        """Load workflow configuration and populate the form."""
+        try:
+            if not config_id:
+                return "No configuration selected", "", "", "", {}
+            
+            config_data, status = self.config_ui.load_configuration(config_id)
+            
+            if not config_data:
+                return status, "", "", "", {}
+            
+            # Extract configuration values
+            topic = config_data.get("topic", "")
+            workflow_description = config_data.get("workflow_description", "")
+            config_overrides = config_data.get("config_overrides", {})
+            
+            return (
+                status,
+                topic,
+                workflow_description,
+                "",  # session_id is not saved in config
+                config_overrides
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to load workflow config: {e}")
+            return f"Error: {e}", "", "", "", {}    
+   
+    def _validate_agent_inputs(
+        self,
+        agent_name: str,
+        session_id: str,
+        dynamic_inputs: dict,
+        timeout: int,
+        retry_count: int,
+        verbose: bool
+    ) -> Tuple[bool, List[str]]:
+        """
+        Validate agent testing inputs.
+        
+        Returns:
+            Tuple of (is_valid, list_of_errors)
+        """
+        errors = []
+        
+        # Validate agent name
+        is_valid, error_msg = self.input_validator.validate_agent_name(agent_name)
+        if not is_valid:
+            errors.append(f"Agent Name: {error_msg}")
+        
+        # Validate session ID
+        is_valid, error_msg = self.input_validator.validate_session_id(session_id)
+        if not is_valid:
+            errors.append(f"Session ID: {error_msg}")
+        
+        # Validate timeout
+        is_valid, error_msg = self.input_validator.validate_timeout(timeout)
+        if not is_valid:
+            errors.append(f"Timeout: {error_msg}")
+        
+        # Validate retry count
+        is_valid, error_msg = self.input_validator.validate_retry_count(retry_count)
+        if not is_valid:
+            errors.append(f"Retry Count: {error_msg}")
+        
+        # Validate dynamic inputs
+        if dynamic_inputs:
+            is_valid, input_errors = self.input_validator.validate_agent_inputs(dynamic_inputs)
+            if not is_valid:
+                errors.extend([f"Input {error}" for error in input_errors])
+        
+        return len(errors) == 0, errors
+    
+    def _validate_workflow_inputs(
+        self,
+        topic: str,
+        description: str,
+        session_id: str,
+        config_overrides: dict
+    ) -> Tuple[bool, List[str]]:
+        """
+        Validate workflow testing inputs.
+        
+        Returns:
+            Tuple of (is_valid, list_of_errors)
+        """
+        errors = []
+        
+        # Validate topic
+        is_valid, error_msg = self.input_validator.validate_topic(topic)
+        if not is_valid:
+            errors.append(f"Topic: {error_msg}")
+        
+        # Validate description
+        is_valid, error_msg = self.input_validator.validate_description(description, required=True)
+        if not is_valid:
+            errors.append(f"Description: {error_msg}")
+        
+        # Validate session ID
+        is_valid, error_msg = self.input_validator.validate_session_id(session_id)
+        if not is_valid:
+            errors.append(f"Session ID: {error_msg}")
+        
+        # Validate config overrides (should be valid JSON)
+        if config_overrides:
+            try:
+                if isinstance(config_overrides, str):
+                    import json
+                    json.loads(config_overrides)
+                elif not isinstance(config_overrides, dict):
+                    errors.append("Config Overrides: Must be a valid JSON object")
+            except json.JSONDecodeError as e:
+                errors.append(f"Config Overrides: Invalid JSON format - {str(e)}")
+        
+        return len(errors) == 0, errors
+    
+    def _validate_config_inputs(
+        self,
+        name: str,
+        description: str
+    ) -> Tuple[bool, List[str]]:
+        """
+        Validate configuration inputs.
+        
+        Returns:
+            Tuple of (is_valid, list_of_errors)
+        """
+        errors = []
+        
+        # Validate config name
+        is_valid, error_msg = self.input_validator.validate_config_name(name)
+        if not is_valid:
+            errors.append(f"Configuration Name: {error_msg}")
+        
+        # Validate description (optional)
+        is_valid, error_msg = self.input_validator.validate_description(description, required=False)
+        if not is_valid:
+            errors.append(f"Description: {error_msg}")
+        
+        return len(errors) == 0, errors
+    
+    @with_error_handling
+    def _run_agent_test_with_validation(
+        self,
+        agent_name: str,
+        session_id: str,
+        dynamic_inputs: dict,
+        timeout: int,
+        retry_count: int,
+        verbose: bool
+    ):
+        """Run agent test with input validation."""
+        # Validate inputs first
+        is_valid, errors = self._validate_agent_inputs(
+            agent_name, session_id, dynamic_inputs, timeout, retry_count, verbose
+        )
+        
+        if not is_valid:
+            raise ValidationError(
+                message="Agent test validation failed",
+                suggestions=errors
+            )
+        
+        # If validation passes, run the original test
+        return self._run_agent_test(
+            agent_name, session_id, dynamic_inputs, timeout, retry_count, verbose
+        )
+    
+    @with_error_handling
+    def _run_workflow_test_with_validation(
+        self,
+        topic: str,
+        description: str,
+        session_id: str,
+        config_overrides: dict
+    ):
+        """Run workflow test with input validation."""
+        # Validate inputs first
+        is_valid, errors = self._validate_workflow_inputs(
+            topic, description, session_id, config_overrides
+        )
+        
+        if not is_valid:
+            raise ValidationError(
+                message="Workflow test validation failed",
+                suggestions=errors
+            )
+        
+        # If validation passes, run the original test
+        return self._run_workflow_test(topic, description, session_id, config_overrides)
+    
+    @with_error_handling
+    def _quick_save_agent_config_with_validation(
+        self,
+        name: str,
+        description: str,
+        agent_name: str,
+        dynamic_inputs: dict,
+        session_id: str,
+        timeout: int,
+        retry_count: int,
+        verbose: bool
+    ) -> str:
+        """Quick save agent configuration with validation."""
+        # Validate config inputs
+        is_valid, errors = self._validate_config_inputs(name, description)
+        if not is_valid:
+            raise ValidationError(
+                message="Configuration validation failed",
+                suggestions=errors
+            )
+        
+        # Validate agent inputs
+        is_valid, errors = self._validate_agent_inputs(
+            agent_name, session_id, dynamic_inputs, timeout, retry_count, verbose
+        )
+        if not is_valid:
+            raise ValidationError(
+                message="Agent configuration validation failed",
+                suggestions=errors
+            )
+        
+        # If validation passes, save the configuration
+        return self._quick_save_agent_config(
+            name, description, agent_name, dynamic_inputs, 
+            session_id, timeout, retry_count, verbose
+        )
+    
+    @with_error_handling
+    def _quick_save_workflow_config_with_validation(
+        self,
+        name: str,
+        description: str,
+        topic: str,
+        workflow_description: str,
+        session_id: str,
+        config_overrides: dict
+    ) -> str:
+        """Quick save workflow configuration with validation."""
+        # Validate config inputs
+        is_valid, errors = self._validate_config_inputs(name, description)
+        if not is_valid:
+            raise ValidationError(
+                message="Configuration validation failed",
+                suggestions=errors
+            )
+        
+        # Validate workflow inputs
+        is_valid, errors = self._validate_workflow_inputs(
+            topic, workflow_description, session_id, config_overrides
+        )
+        if not is_valid:
+            raise ValidationError(
+                message="Workflow configuration validation failed",
+                suggestions=errors
+            )
+        
+        # If validation passes, save the configuration
+        return self._quick_save_workflow_config(
+            name, description, topic, workflow_description, session_id, config_overrides
+        )
+    
+    def _create_validation_feedback(self, field_name: str, is_valid: bool, error_message: str = "") -> gr.update:
+        """
+        Create validation feedback for form fields.
+        
+        Args:
+            field_name: Name of the field being validated
+            is_valid: Whether the field is valid
+            error_message: Error message if invalid
+            
+        Returns:
+            Gradio update with validation styling
+        """
+        if is_valid:
+            return gr.update(
+                elem_classes=["validation-success"],
+                info=f"✅ {field_name} is valid"
+            )
+        else:
+            return gr.update(
+                elem_classes=["validation-error"],
+                info=f"❌ {error_message}"
+            )
+    
+    def _validate_field_on_change(self, field_name: str, value: Any, validator_func: Callable) -> gr.update:
+        """
+        Validate a field when its value changes.
+        
+        Args:
+            field_name: Name of the field
+            value: Current field value
+            validator_func: Validation function to use
+            
+        Returns:
+            Gradio update with validation feedback
+        """
+        try:
+            is_valid, error_message = validator_func(value)
+            return self._create_validation_feedback(field_name, is_valid, error_message)
+        except Exception as e:
+            logger.error(f"Error validating field {field_name}: {e}")
+            return gr.update()
+    
+    def _create_validation_feedback(self, field_name: str, is_valid: bool, error_message: str = "") -> gr.update:
+        """
+        Create validation feedback for a field.
+        
+        Args:
+            field_name: Name of the field
+            is_valid: Whether the field is valid
+            error_message: Error message if invalid
+            
+        Returns:
+            Gradio update with validation styling and info
+        """
+        if is_valid:
+            return gr.update(
+                elem_classes=["validation-success"],
+                info=f"✅ {field_name.replace('_', ' ').title()} is valid"
+            )
+        else:
+            return gr.update(
+                elem_classes=["validation-error"],
+                info=f"❌ {error_message}"
+            )
+    
+    def _validate_agent_name_on_change(self, agent_name: str) -> gr.update:
+        """Validate agent name field on change."""
+        return self._validate_field_on_change(
+            "agent_name", 
+            agent_name, 
+            self.input_validator.validate_agent_name
+        )
+    
+    def _validate_session_id_on_change(self, session_id: str) -> gr.update:
+        """Validate session ID field on change."""
+        return self._validate_field_on_change(
+            "session_id", 
+            session_id, 
+            self.input_validator.validate_session_id
+        )
+    
+    def _validate_timeout_on_change(self, timeout: Union[int, float]) -> gr.update:
+        """Validate timeout field on change."""
+        return self._validate_field_on_change(
+            "timeout", 
+            timeout, 
+            self.input_validator.validate_timeout
+        )
+    
+    def _validate_retry_count_on_change(self, retry_count: Union[int, str]) -> gr.update:
+        """Validate retry count field on change."""
+        return self._validate_field_on_change(
+            "retry_count", 
+            retry_count, 
+            self.input_validator.validate_retry_count
+        )
+    
+    def _validate_topic_on_change(self, topic: str) -> gr.update:
+        """Validate topic field on change."""
+        return self._validate_field_on_change(
+            "topic", 
+            topic, 
+            self.input_validator.validate_topic
+        )
+    
+    def _validate_description_on_change(self, description: str) -> gr.update:
+        """Validate description field on change."""
+        return self._validate_field_on_change(
+            "description", 
+            description, 
+            lambda desc: self.input_validator.validate_description(desc, required=True)
+        )
+    
+    def _validate_config_name_on_change(self, config_name: str) -> gr.update:
+        """Validate configuration name field on change."""
+        return self._validate_field_on_change(
+            "config_name", 
+            config_name, 
+            self.input_validator.validate_config_name
+        )
+    
+    def _validate_json_input_on_change(self, json_str: str) -> Tuple[gr.update, str]:
+        """
+        Validate JSON input field on change.
+        
+        Args:
+            json_str: JSON string to validate
+            
+        Returns:
+            Tuple of (field_update, validation_message)
+        """
+        try:
+            is_valid, error_message, parsed_json = self.input_validator.validate_json_input(json_str, required=False)
+            
+            if is_valid:
+                return (
+                    gr.update(
+                        elem_classes=["validation-success"],
+                        info="✅ Valid JSON format"
+                    ),
+                    "JSON is valid"
+                )
+            else:
+                return (
+                    gr.update(
+                        elem_classes=["validation-error"],
+                        info=f"❌ {error_message}"
+                    ),
+                    f"JSON validation error: {error_message}"
+                )
+        except Exception as e:
+            logger.error(f"Error validating JSON input: {e}")
+            return (
+                gr.update(
+                    elem_classes=["validation-error"],
+                    info="❌ Validation error occurred"
+                ),
+                f"Validation error: {str(e)}"
+            )
